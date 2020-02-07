@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head></head>
+<body>
+    <div id="root"></div>
+    <script>
+        window.onpopstate = function(event) {
+            history.go()
+        }
+        const el = document.getElementById('root')
+        let html = 'history: ' + JSON.stringify(history.state)
+        html = html + '<br/>' 
+        html = html + 'localStorage: ' + JSON.stringify(localStorage.getItem('hoge'))
+        el.innerHTML = html
+    </script>
+</body>
+
+</html>
+
