@@ -1,0 +1,36 @@
+{
+  "name": "transition",
+  "version": "0.0.0",
+  "description": "transition",
+  "// main": "index.js",
+  "scripts": {
+    "prebuild": "mkdir -p build/",
+    "build": "tsc -b ./",
+    "watch": "watch 'npm run build' ./ -p '/build|dist/'",
+    "serve": "npx ts-node -P ./script/tsconfig.json ./script/server.ts",
+    "start": "concurrently -p '{time} {name}' -t 'HH:mm:ss.SSS' -c green,yellow  npm:serve npm:watch",
+    "test": "echo 'Error: no test specified' && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kena0ki/amida.git"
+  },
+  "author": "@kena0ki",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kena0ki/amida/issues"
+  },
+  "homepage": "https://github.com/kena0ki/amida#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^13.9.5",
+    "@typescript-eslint/eslint-plugin": "^2.25.0",
+    "@typescript-eslint/parser": "^2.25.0",
+    "chokidar": "^3.3.1",
+    "concurrently": "^5.1.0",
+    "eslint": "^6.8.0",
+    "ts-node": "^8.8.1",
+    "typescript": "^3.8.3",
+    "watch": "kena0ki/watch"
+  }
+}

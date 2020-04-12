@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "module": "commonJS",
+    "outDir": "./",
+    "target": "es5",
+    "strictNullChecks": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    // "strict": true,
+    // "diagnostics": true,
+  },
+  "include": [
+      "**/*"
+  ]
+}
