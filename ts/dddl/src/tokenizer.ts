@@ -4,6 +4,7 @@ class Token {
   get length(): number { return this.value.length; }
 }
 class Whitespace extends Token {};
+class NewLine extends Whitespace {};
 class Word extends Token {};
 class SingleQuotedString extends Token {};
 class NationalStringLiteral extends Token {};
@@ -18,9 +19,9 @@ class Other extends Token {};
 
 const SPACE = new Whitespace(' ');
 const TAB = new Whitespace('\t');
-const LF = new Whitespace('\n');
-const CRLF = new Whitespace('\r\n');
-const CR = new Whitespace('\r');
+const LF = new NewLine('\n');
+const CRLF = new NewLine('\r\n');
+const CR = new NewLine('\r');
 const LPAREN = new LParen('(');
 const RPAREN = new RParen(')');
 const COMMA = new Comma(',');
@@ -56,7 +57,6 @@ const RBRACE = new Operator('}');
 const TILDE = new Operator('~');
 const HASH = new Operator('#');
 const ATSIGN = new Operator('@');
-
 
 const TOKENIZE_SINGLE_QUOTED_STRING_ERROR = 'Unterminated string literal';
 const TOKENIZE_DELIMITED_STRING_ERROR = (delimiter => `Expected close delimiter ${delimiter} before EOF.`)('"');
@@ -109,17 +109,41 @@ const rule: Rule = {
   '@':  () => ATSIGN,
 };
 
-function tokenize(src: string) {
+class TokenizeError extends Error {
+  row: number
+  col: number
+}
+
+export const tokenize = (src: string): Token[] => {
   const chars = Array.from(src);
+  const tokens: Token[] = [];
+  let row = 1;
+  let col = 1;
   let i=0;
   while(i < chars.length) {
     const c = chars[i];
     const key = isIdentifierStart(c) ? 'ident' :
-                isDigit(c) ? 'num' :
+                isDelimiteddIdentifierStart(c) ? 'delimitedIdent' :
                 isDigit(c) ? 'num' :
                 c;
-    const token = rule[key]?.(chars);
+    try {
+      const token = rule[key]?.(chars) || new Other(key);
+      tokens.push(token);
+      if (token instanceof NewLine) {
+        row++;
+        col=1;
+      } else {
+        col += token.length;
+      }
+    } catch (err) {
+      let e = new TokenizeError('Tokenize error');
+      if (e.stack) {
+        e.stack = e.stack.split('\n').slice(0,2).join('\n') + '\n' + err.stack;
+      }
+      throw e;
+    }
   }
+  return tokens;
 }
 const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
 const takeWhile = (chars: string[], testStart: number, predicate: (ch: string, idx: number, chars: string[]) => boolean): string => {
@@ -139,30 +163,4 @@ const isIdentifierStart = (ch: string): boolean => ['@', '#', '_'].includes(ch) 
 const isIdentifierPart = (ch: string): boolean => ['@', '$', '#', '_'].includes(ch) || ('0' < ch && ch < '9') || ('A' < ch && ch < 'Z' ) || ('a' < ch && ch < 'z');
 const tokenizeSingleQuotedString = (chars: string[]): string => takeWhileOrError(chars, 1, (c,i,chars) => c === '\'' && chars[i+1] !== '\'', TOKENIZE_SINGLE_QUOTED_STRING_ERROR);
 const tokenizeIdentifier = (chars: string[]): string => takeWhile(chars, 1, c => isIdentifierPart(c));
-// function tokenizeNumber(chars: string[]): string {
-//   let i=1;
-//   while((isDigit(chars[i]) || chars[i] == '.') && i<chars.length) i++;
-//   return chars.slice(0,i).join();
-// }
-// function tokenizeWord(chars: string[]): string {
-//   let i=1;
-//   while(isIdentifierPart(chars[i]) && i<chars.length) i++;
-//   return chars.slice(0,i).join();
-// }
-//     fn is_identifier_start(&self, ch: ch) -> bool {
-//         ('a'..='z').contains(&ch)
-//             || ('A'..='Z').contains(&ch)
-//             || ch == '_'
-//             || ch == '#'
-//             || ch == '@'
-//     }
-// 
-//     fn is_identifier_part(&self, ch: ch) -> bool {
-//         ('a'..='z').contains(&ch)
-//             || ('A'..='Z').contains(&ch)
-//             || ('0'..='9').contains(&ch)
-//             || ch == '@'
-//             || ch == '$'
-//             || ch == '#'
-//             || ch == '_'
-//     }
+
