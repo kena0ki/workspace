@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig-base.json",
+  "compilerOptions": {
+    "outDir": "../dist",
+    "sourceRoot": "./src", // this points to 'demo/dist/src'
+    // "diagnostics": true,
+  },
+  "include": [
+      "**/*"
+  ]
+}

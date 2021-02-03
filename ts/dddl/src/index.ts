@@ -1,0 +1,6 @@
+const dataTypes {
+  FLOAT: function() {
+  },
+}
+
+
