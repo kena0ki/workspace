@@ -1,4 +1,4 @@
-import { logger } from './util';
+import { logger, wrapError } from './util';
 
 class Token {
   constructor(private _value: string) { }
@@ -9,8 +9,6 @@ class Whitespace extends Token {}
 class NewLine extends Whitespace {}
 class Word extends Token {}
 class SingleQuotedString extends Token {}
-class NationalStringLiteral extends Token {}
-class HexStringLiteral extends Token {}
 class Num extends Token {}
 class LParen extends Token {}
 class RParen extends Token {}
@@ -18,6 +16,14 @@ class Comma extends Token {}
 class Cmmnt extends Token {}
 class Operator extends Token {}
 class Other extends Token {}
+
+class NonCharcterStringLiteral extends Token {
+  constructor(private _content: string, private _prefix: string) { super(_prefix + _content) }
+  get content(): string { return this._content; }
+  get prefix(): string { return this._prefix; }
+}
+class NationalStringLiteral extends NonCharcterStringLiteral {}
+class HexStringLiteral extends NonCharcterStringLiteral {}
 
 const SPACE = new Whitespace(' ');
 const TAB = new Whitespace('\t');
@@ -72,25 +78,25 @@ const rule: Rule = {
   '\n': () => LF,
   '\r': chars => chars[1] === '\n' ? CRLF : CR,
   // national string: N'...'
-  'N': chars => chars[1] === '\'' ? new NationalStringLiteral(tokenizeSingleQuotedString(chars)) : new Word(tokenizeIdentifier(chars)),
+  'N': chars => chars[1] === '\'' ? new NationalStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
   // hex string: X'...' or x'...'
-  'X': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars)) : new Word(tokenizeIdentifier(chars)),
-  'x': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars)) : new Word(tokenizeIdentifier(chars)),
+  'X': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
+  'x': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
   // identifier or keyword
   ident: chars => new Word(tokenizeIdentifier(chars)),
   // string
   '\'': chars => new SingleQuotedString(tokenizeSingleQuotedString(chars)),
   // delimited (quoted) identifier
-  delimitedIdent: chars => new Word(takeWhileOrError(chars, 2, (c,i,chars) => !isDelimiteddIdentifierStart(chars[i-1]), TOKENIZE_DELIMITED_STRING_ERROR)),
+  delimitedIdent: chars => new Word(takeWhileOrError(chars, 2, (c,i,chars) => ~~!isDelimiteddIdentifierStart(chars[i-1]), TOKENIZE_DELIMITED_STRING_ERROR)),
   // number
-  num: chars => new Num(takeWhile(chars, 1, c => (isDigit(c) || c === '.'))),
+  num: chars => new Num(takeWhile(chars, 1, c => ~~(isDigit(c) || c === '.')) ),
   // puctuations
   '(': () => LPAREN,
   ')': () => RPAREN,
   ',': () => COMMA,
   // operators
-  '-': chars => chars[1] === '-' ? new Cmmnt(takeWhile(chars, 2, c => c !== '\n'  /* TODO only LF? */ )) : MINUS,
-  '/': chars => chars[1] === '*' ? new Cmmnt(takeWhileOrError(chars, 4, (c,i,chars) => !(chars[i-2] === '*' && chars[i-1] === '/'), TOKENIZE_MULTI_LINE_COMMENT_ERROR)) : DIV,
+  '-': chars => chars[1] === '-' ? new Cmmnt(takeWhile(chars, 2, c => ~~(c !== '\n')  /* TODO only LF? */ )) : MINUS,
+  '/': chars => chars[1] === '*' ? new Cmmnt(takeWhileOrError(chars, 4, (c,i,chars) => ~~!(chars[i-2] === '*' && chars[i-1] === '/'), TOKENIZE_MULTI_LINE_COMMENT_ERROR)) : DIV,
   '+': () => PLUS,
   '*': () => MULT,
   '%': () => MOD,
@@ -110,8 +116,8 @@ const rule: Rule = {
   '{':  () => LBRACE,
   '}':  () => RBRACE,
   '~':  () => TILDE,
-  '#':  () => HASH,
-  '@':  () => ATSIGN,
+  '#':  () => HASH, // TODO dead code? this char is in isIdentifierStart
+  '@':  () => ATSIGN, // TODO dead code? this char is in isIdentifierStart
 };
 
 class TokenizeError extends Error {
@@ -120,21 +126,29 @@ class TokenizeError extends Error {
   }
 }
 
-class TokenSet extends Array {
-  joinValues = (delim:string = ','): string => {
-    return this.slice(1).reduce((prev, curr) => `${prev}${delim} ${curr.value}`, this[0].value);
+class TokenSet extends Array<Token> {
+  constructor(...a) { super(...a); }
+  get tokens(): Token[] { return this.map(v=>v); }
+  toString = () => {
+    const tokens = this.slice(1).reduce(
+      (prev, curr) => `${prev},\n  ${curr.constructor.name}: ${JSON.stringify(curr)}`,
+      `  ${this[0].constructor.name}: ${JSON.stringify(this[0].value)}`
+    );
+    return `[\n${tokens}\n]`;
   }
+  joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
 
 export const tokenize = (src: string): TokenSet => {
   const chars = Array.from(src);
-  const tokens: TokenSet = new TokenSet;
+  const tokens: TokenSet = new TokenSet();
   let row = 1;
   let col = 1;
   let i=0;
   while(i < chars.length) {
     const c = chars[i];
-    const key = isIdentifierStart(c) ? 'ident' :
+    const key = ['N','X','x'].includes(c) ? c :
+                isIdentifierStart(c) ? 'ident' :
                 isDelimiteddIdentifierStart(c) ? 'delimitedIdent' :
                 isDigit(c) ? 'num' :
                 c;
@@ -151,10 +165,7 @@ export const tokenize = (src: string): TokenSet => {
         col += token.length;
       }
     } catch (err) {
-      const e = new TokenizeError('Tokenize error', row, col);
-      if (e.stack) {
-        e.stack = e.stack.split('\n').slice(0,2).join('\n') + '\n' + err.stack;
-      }
+      const e = wrapError(new TokenizeError('Tokenize error', row, col), err);
       logger.log(e.stack);
       throw e;
     }
@@ -162,26 +173,26 @@ export const tokenize = (src: string): TokenSet => {
   return tokens;
 }
 const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
-const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => boolean|number): string => {
+const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number): string => {
   let i=testStart;
   let by=0;
-  while(i < chars.length && (by = toBit(advanceBy(chars[i], i, chars))) ) i+=by;
+  while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
   logger.log(chars, i, chars[i]);
   return chars.slice(0, min(i, chars.length)).join('');
 }
-const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => boolean|number, msg: string): string => {
+const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number, msg: string): string => {
   let i=testStart;
   let by=0;
-  while(i < chars.length && (by = toBit(advanceBy(chars[i], i, chars))) ) i+=by;
+  while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
+  logger.log(chars, i, chars[i]);
   if (i === chars.length) throw new Error(msg);
   return chars.slice(0, i).join('');
 }
-const toBit = (b:boolean|number): number => typeof b === 'number' ? b :b ? 1 : 0;
 const isDigit = (ch: string): boolean => '0' <= ch && ch <= '9';
 const isDelimiteddIdentifierStart = (ch: string): boolean => ['"'].includes(ch);
 const isIdentifierStart = (ch: string): boolean => ['@', '#', '_'].includes(ch) ||  ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
 const isIdentifierPart = (ch: string): boolean => ['@', '$', '#', '_'].includes(ch) || ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
 const tokenizeSingleQuotedString = (chars: string[]): string => takeWhileOrError(chars, 2, tokenizeSingleQuotedStringAdvanceBy, TOKENIZE_SINGLE_QUOTED_STRING_ERROR);
 const tokenizeSingleQuotedStringAdvanceBy = (c:string,i:number,chars:string[]):number => chars[i-1] !== '\'' ? 1 : (chars[i-1] === '\'' && c === '\'') ? 2 : 0;
-const tokenizeIdentifier = (chars: string[]): string => takeWhile(chars, 1, c => isIdentifierPart(c));
+const tokenizeIdentifier = (chars: string[]): string => takeWhile(chars, 1, c => ~~isIdentifierPart(c));
 

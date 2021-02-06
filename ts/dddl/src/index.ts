@@ -1,6 +1,2 @@
-const dataTypes {
-  FLOAT: function() {
-  },
-}
-
+export { tokenize } from './tokenizer';
 

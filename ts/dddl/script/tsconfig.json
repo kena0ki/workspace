@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig-base.json",
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "module": "commonJS",
+    "outDir": "./",
+    // "strict": true,
+    // "diagnostics": true,
+  },
+  "include": [
+      "**/*"
+  ]
+}
