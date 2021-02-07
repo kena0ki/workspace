@@ -36,7 +36,9 @@ Array [
   Whitespace {
     "_value": " ",
   },
-  Word {
+  DelimitedIdent {
+    "_content": "ITEM",
+    "_delimiter": "\\"",
     "_value": "\\"ITEM\\"",
   },
   Whitespace {

@@ -1,74 +1,94 @@
 import { logger, wrapError } from './util';
-
-class Token {
+const KEYWORDS = [ // only contains keywords that is necessary for create statements
+  'CREATE',
+  'TABLE',
+  'OR',
+  'REPLACE',
+  'IF',
+  'NOT',
+  'EXISTS',
+] as const;
+type Keyword = typeof KEYWORDS[number];
+export class Token {
   constructor(private _value: string) { }
   get value(): string { return this._value; }
   get length(): number { return this._value.length; }
+  get class(): string { return this.constructor.name; }
 }
-class Whitespace extends Token {}
-class NewLine extends Whitespace {}
-class Word extends Token {}
-class SingleQuotedString extends Token {}
-class Num extends Token {}
-class LParen extends Token {}
-class RParen extends Token {}
-class Comma extends Token {}
-class Cmmnt extends Token {}
-class Operator extends Token {}
-class Other extends Token {}
+const equalToKeyword = (token: Token, keyword: Keyword): boolean => token instanceof Word && token.value === keyword;
+export const tokenUtil = {
+  equalToKeyword,
+};
+export class Whitespace extends Token {}
+export class NewLine extends Whitespace {}
+export class Word extends Token {} // keyword or identifier
+export class DelimitedIdent extends Token {
+  constructor(private _content: string, private _delimiter: string) { super(_delimiter + _content + _delimiter); }
+  get content(): string { return this._content; }
+  get delimiter(): string { return this._delimiter; }
+}
+export class SingleQuotedString extends Token {}
+export class Num extends Token {}
+export class LParen extends Token {}
+export class RParen extends Token {}
+export class Comma extends Token {}
+export class Cmmnt extends Token {}
+export class Operator extends Token {}
+export class Other extends Token {}
 
-class NonCharcterStringLiteral extends Token {
-  constructor(private _content: string, private _prefix: string) { super(_prefix + _content) }
+export class NonCharcterStringLiteral extends Token {
+  constructor(private _content: string, private _prefix: string) { super(_prefix + _content); }
   get content(): string { return this._content; }
   get prefix(): string { return this._prefix; }
 }
-class NationalStringLiteral extends NonCharcterStringLiteral {}
-class HexStringLiteral extends NonCharcterStringLiteral {}
+export class NationalStringLiteral extends NonCharcterStringLiteral {}
+export class HexStringLiteral extends NonCharcterStringLiteral {}
 
-const SPACE = new Whitespace(' ');
-const TAB = new Whitespace('\t');
-const LF = new NewLine('\n');
-const CRLF = new NewLine('\r\n');
-const CR = new NewLine('\r');
-const LPAREN = new LParen('(');
-const RPAREN = new RParen(')');
-const COMMA = new Comma(',');
-const CONCAT = new Operator('||');
-const EQ = new Operator('=');
-const RARROW = new Operator('=>');
-const PERIOD = new Operator('.');
-const PLUS = new Operator('+');
-const MINUS = new Operator('-');
-const DIV = new Operator('/');
-const MULT = new Operator('*');
-const MOD = new Operator('%');
-const NEQ = new Operator('!=');
-const DOUBLE_EXCLAMATION_MARK = new Operator('!!');
-const EXCLAMATION_MARK = new Operator('!');
-const LT = new Operator('<');
-const LTEQ = new Operator('<=');
-const NEQ2 = new Operator('<>');
-const SHIFT_LEFT = new Operator('<<');
-const GT = new Operator('>');
-const GTEQ = new Operator('>=');
-const SHIFT_RIGHT = new Operator('>>');
-const COLON = new Operator(':');
-const DOUBLE_COLON = new Operator('::');
-const SEMICOLON = new Operator(';');
-const BACKSLASH = new Operator('\\');
-const LBRACKET = new Operator('[');
-const RBRACKET = new Operator(']');
-const AMPERSAND = new Operator('&');
-const CARET = new Operator('^');
-const LBRACE = new Operator('{');
-const RBRACE = new Operator('}');
-const TILDE = new Operator('~');
-const HASH = new Operator('#');
-const ATSIGN = new Operator('@');
+export const SPACE = new Whitespace(' ');
+export const TAB = new Whitespace('\t');
+export const LF = new NewLine('\n');
+export const CRLF = new NewLine('\r\n');
+export const CR = new NewLine('\r');
+export const LPAREN = new LParen('(');
+export const RPAREN = new RParen(')');
+export const COMMA = new Comma(',');
+export const CONCAT = new Operator('||');
+export const EQ = new Operator('=');
+export const RARROW = new Operator('=>');
+export const PERIOD = new Operator('.');
+export const PLUS = new Operator('+');
+export const MINUS = new Operator('-');
+export const DIV = new Operator('/');
+export const MULT = new Operator('*');
+export const MOD = new Operator('%');
+export const NEQ = new Operator('!=');
+export const DOUBLE_EXCLAMATION_MARK = new Operator('!!');
+export const EXCLAMATION_MARK = new Operator('!');
+export const LT = new Operator('<');
+export const LTEQ = new Operator('<=');
+export const NEQ2 = new Operator('<>');
+export const SHIFT_LEFT = new Operator('<<');
+export const GT = new Operator('>');
+export const GTEQ = new Operator('>=');
+export const SHIFT_RIGHT = new Operator('>>');
+export const COLON = new Operator(':');
+export const DOUBLE_COLON = new Operator('::');
+export const SEMICOLON = new Operator(';');
+export const BACKSLASH = new Operator('\\');
+export const LBRACKET = new Operator('[');
+export const RBRACKET = new Operator(']');
+export const AMPERSAND = new Operator('&');
+export const CARET = new Operator('^');
+export const LBRACE = new Operator('{');
+export const RBRACE = new Operator('}');
+export const TILDE = new Operator('~');
+export const HASH = new Operator('#');
+export const ATSIGN = new Operator('@');
 
 const TOKENIZE_SINGLE_QUOTED_STRING_ERROR = 'Unterminated string literal';
 const TOKENIZE_DELIMITED_STRING_ERROR = (delimiter => `Expected close delimiter ${delimiter} before EOF.`)('"');
 const TOKENIZE_MULTI_LINE_COMMENT_ERROR = 'Unexpected EOF while in a multi-line comment';
+
 
 type Rule = { [ch: string]: (chars: string[]) => Token };
 const rule: Rule = {
@@ -79,7 +99,7 @@ const rule: Rule = {
   '\r': chars => chars[1] === '\n' ? CRLF : CR,
   // national string: N'...'
   'N': chars => chars[1] === '\'' ? new NationalStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
-  // hex string: X'...' or x'...'
+  // hex string: X'...' or x'...'. the latter (small x) is PostgreSQL diarect.
   'X': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
   'x': chars => chars[1] === '\'' ? new HexStringLiteral(tokenizeSingleQuotedString(chars.slice(1)), chars[0]) : new Word(tokenizeIdentifier(chars)),
   // identifier or keyword
@@ -87,7 +107,7 @@ const rule: Rule = {
   // string
   '\'': chars => new SingleQuotedString(tokenizeSingleQuotedString(chars)),
   // delimited (quoted) identifier
-  delimitedIdent: chars => new Word(takeWhileOrError(chars, 2, (c,i,chars) => ~~!isDelimiteddIdentifierStart(chars[i-1]), TOKENIZE_DELIMITED_STRING_ERROR)),
+  delimitedIdent: chars => new DelimitedIdent(takeWhileOrError(chars.slice(1), 1, c => ~~(c !== chars[0]), TOKENIZE_DELIMITED_STRING_ERROR), chars[0]),
   // number
   num: chars => new Num(takeWhile(chars, 1, c => ~~(isDigit(c) || c === '.')) ),
   // puctuations
@@ -122,11 +142,11 @@ const rule: Rule = {
 
 class TokenizeError extends Error {
   constructor(msg: string, public row: number, public col: number){
-    super(msg)
+    super(msg);
   }
 }
 
-class TokenSet extends Array<Token> {
+export class TokenSet extends Array<Token> {
   constructor(...a) { super(...a); }
   get tokens(): Token[] { return this.map(v=>v); }
   toString = () => {
@@ -139,6 +159,27 @@ class TokenSet extends Array<Token> {
   joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
 
+const nextMeaningfulTokenIdx = (tokenSet: TokenSet, start: number): number => {
+  let i=start;
+  while(i<tokenSet.length && tokenSet[i] instanceof Whitespace) i++;
+  return i;
+};
+const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): number => {
+  return tokenUtil.equalToKeyword(tokenSet[start], keyword) ? nextMeaningfulTokenIdx(tokenSet, start) : -1;
+};
+const parseKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): number => {
+  let i=start;
+  for (let j=0; i<tokenSet.length && j<keywords.length; j++) {
+    if((i = tokenSetUtil.parseKeyword(tokenSet, start, keywords[j])) < 0) break;
+  }
+  return i;
+};
+export const tokenSetUtil = {
+  nextMeaningfulTokenIdx,
+  parseKeyword,
+  parseKeywords,
+};
+
 export const tokenize = (src: string): TokenSet => {
   const chars = Array.from(src);
   const tokens: TokenSet = new TokenSet();
@@ -149,7 +190,7 @@ export const tokenize = (src: string): TokenSet => {
     const c = chars[i];
     const key = ['N','X','x'].includes(c) ? c :
                 isIdentifierStart(c) ? 'ident' :
-                isDelimiteddIdentifierStart(c) ? 'delimitedIdent' :
+                isDelimitedIdentifierStart(c) ? 'delimitedIdent' :
                 isDigit(c) ? 'num' :
                 c;
     try {
@@ -171,7 +212,7 @@ export const tokenize = (src: string): TokenSet => {
     }
   }
   return tokens;
-}
+};
 const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
 const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number): string => {
   let i=testStart;
@@ -179,7 +220,7 @@ const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, i
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
   logger.log(chars, i, chars[i]);
   return chars.slice(0, min(i, chars.length)).join('');
-}
+};
 const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number, msg: string): string => {
   let i=testStart;
   let by=0;
@@ -187,9 +228,10 @@ const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: st
   logger.log(chars, i, chars[i]);
   if (i === chars.length) throw new Error(msg);
   return chars.slice(0, i).join('');
-}
+};
 const isDigit = (ch: string): boolean => '0' <= ch && ch <= '9';
-const isDelimiteddIdentifierStart = (ch: string): boolean => ['"'].includes(ch);
+const delimiters = ['"']; // TODO dialect
+const isDelimitedIdentifierStart = (ch: string): boolean => delimiters.includes(ch);
 const isIdentifierStart = (ch: string): boolean => ['@', '#', '_'].includes(ch) ||  ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
 const isIdentifierPart = (ch: string): boolean => ['@', '$', '#', '_'].includes(ch) || ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
 const tokenizeSingleQuotedString = (chars: string[]): string => takeWhileOrError(chars, 2, tokenizeSingleQuotedStringAdvanceBy, TOKENIZE_SINGLE_QUOTED_STRING_ERROR);
