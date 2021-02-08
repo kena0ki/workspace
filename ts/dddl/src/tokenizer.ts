@@ -7,8 +7,13 @@ const KEYWORDS = [ // only contains keywords that is necessary for create statem
   'IF',
   'NOT',
   'EXISTS',
+  'CONSTRAINT',
+  'PRIMARY',
+  'UNIQUE',
+  'KEY',
+  'FOREIGN',
 ] as const;
-type Keyword = typeof KEYWORDS[number];
+export type Keyword = typeof KEYWORDS[number];
 export class Token {
   constructor(private _value: string) { }
   get value(): string { return this._value; }
@@ -21,7 +26,11 @@ export const tokenUtil = {
 };
 export class Whitespace extends Token {}
 export class NewLine extends Whitespace {}
-export class Word extends Token {} // keyword or identifier
+export class Word extends Token { // keyword or (delimited) identifier
+//  constructor(private _content: string, private _delimiter?: string) { super(_delimiter + _content + _delimiter); }
+//  get content(): string { return this._content; }
+//  get delimiter(): string|undefined { return this._delimiter; }
+}
 export class DelimitedIdent extends Token {
   constructor(private _content: string, private _delimiter: string) { super(_delimiter + _content + _delimiter); }
   get content(): string { return this._content; }
@@ -158,27 +167,6 @@ export class TokenSet extends Array<Token> {
   }
   joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
-
-const nextMeaningfulTokenIdx = (tokenSet: TokenSet, start: number): number => {
-  let i=start;
-  while(i<tokenSet.length && tokenSet[i] instanceof Whitespace) i++;
-  return i;
-};
-const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): number => {
-  return tokenUtil.equalToKeyword(tokenSet[start], keyword) ? nextMeaningfulTokenIdx(tokenSet, start) : -1;
-};
-const parseKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): number => {
-  let i=start;
-  for (let j=0; i<tokenSet.length && j<keywords.length; j++) {
-    if((i = tokenSetUtil.parseKeyword(tokenSet, start, keywords[j])) < 0) break;
-  }
-  return i;
-};
-export const tokenSetUtil = {
-  nextMeaningfulTokenIdx,
-  parseKeyword,
-  parseKeywords,
-};
 
 export const tokenize = (src: string): TokenSet => {
   const chars = Array.from(src);
