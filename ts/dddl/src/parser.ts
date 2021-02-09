@@ -58,10 +58,12 @@ class Unique implements TableConstraint {
 /// A referential integrity constraint (`[ CONSTRAINT <name> ] FOREIGN KEY (<columns>)
 /// REFERENCES <foreign_table> (<referred_columns>)`)
 class ForeignKey implements TableConstraint {
-    name?: Ident
-    columns: Ident[]
-    foreignTable: ObjectName
-    referredColumns: Ident[]
+  constructor(
+    public name: Ident|undefined,
+    public columns: Ident[],
+    public foreignTable: ObjectName,
+    public referredColumns: Ident[],
+  ) {}
 }
 /// `[ CONSTRAINT <name> ] CHECK (<expr>)`
 class Check implements TableConstraint {
@@ -211,7 +213,16 @@ const parseTableConstraint = (tokenSet: TokenSet, start: number): ParseResult =>
     result = parseParenthesizedColumnList(tokenSet, start, false);
     result.content = new Unique(name, result.content as Ident[], isPrimary);
     return result;
-  } else if (equalToKeyword(token, 'PRIMARY')) {
+  } else if (equalToKeyword(token, 'FOREIGN')) {
+    result = expectKeyword(tokenSet, result.idx, 'KEY');
+    result = parseParenthesizedColumnList(tokenSet, start, false);
+    const columns = result.content as Ident[];
+    result = expectKeyword(tokenSet, result.idx, 'REFERENCES');
+    result = parseObjectName(tokenSet, result.idx);
+    const foreignTable = result.content as ObjectName;
+    result = parseParenthesizedColumnList(tokenSet, start, false);
+    const referredColumns = result.content as Ident[];
+    result.content = new ForeignKey(name, columns, foreignTable, referredColumns));
   } else {
     
     throw expected('PRIMARY, UNIQUE, FOREIGN, or CHECK', tokenSet[result.idx]);
@@ -231,7 +242,7 @@ const parseParenthesizedColumnList = (tokenSet: TokenSet, start: number, isOptio
     throw expected('a list of columns in parentheses', tokenSet[result.idx]);
   }
 };
-function parseCommaSeparated(tokenSet: TokenSet, start: number, callback: (TokenSet, number) => Found): ParseResult {
+const parseCommaSeparated = (tokenSet: TokenSet, start: number, callback: (TokenSet, number) => Found): ParseResult => {
   const values: ResultContent[] = [];
   let result: ParseResult = notFound(start);
   for(;;) {
