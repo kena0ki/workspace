@@ -13,6 +13,12 @@ const KEYWORDS = [ // only contains keywords that is necessary for create statem
   'KEY',
   'FOREIGN',
   'REFERENCES',
+  'CHECK',
+  'AND',
+  'OR',
+  'LIKE',
+  'NOT',
+  'IN',
 ] as const;
 export type Keyword = typeof KEYWORDS[number];
 export class Token {
@@ -44,6 +50,7 @@ export class RParen extends Token {}
 export class Comma extends Token {}
 export class Cmmnt extends Token {}
 export class Operator extends Token {}
+export class BinaryOperator extends Operator {}
 export class Other extends Token {}
 
 export class NonCharcterStringLiteral extends Token {
