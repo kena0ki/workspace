@@ -19,6 +19,9 @@ const KEYWORDS = [ // only contains keywords that is necessary for create statem
   'LIKE',
   'NOT',
   'IN',
+  'IS',
+  'NULL',
+  'BETWEEN',
 ] as const;
 export type Keyword = typeof KEYWORDS[number];
 export class Token {
