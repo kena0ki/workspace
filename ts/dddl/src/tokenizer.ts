@@ -22,6 +22,8 @@ const KEYWORDS = [ // only contains keywords that is necessary for create statem
   'IS',
   'NULL',
   'BETWEEN',
+  'SELECT',
+  'WITH',
 ] as const;
 export type Keyword = typeof KEYWORDS[number];
 export class Token {
@@ -167,7 +169,7 @@ class TokenizeError extends Error {
 }
 
 export class TokenSet extends Array<Token> {
-  constructor(...a) { super(...a); }
+  constructor(...a: any) { super(...a); }
   get tokens(): Token[] { return this.map(v=>v); }
   toString = () => {
     const tokens = this.slice(1).reduce(

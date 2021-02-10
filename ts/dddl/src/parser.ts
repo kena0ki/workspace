@@ -6,6 +6,7 @@ import {
   Whitespace,
   Word,
   DelimitedIdent,
+  Num,
   Keyword,
   COLON,
   SEMICOLON,
@@ -89,6 +90,21 @@ class IsNotNull implements Expr {
     public expr: Expr,
   ) {}
 }
+class InList implements Expr {
+  constructor(
+    public expr: Expr,
+    public list: Expr[],
+    public negated: boolean,
+  ) {}
+}
+class Between implements Expr {
+  constructor(
+    public expr: Expr,
+    public negated: boolean,
+    public low: Expr,
+    public high: Expr,
+  ) {}
+}
 class SqlOption {
   name: Ident
   value: Value
@@ -101,42 +117,102 @@ class Ident {
   ) {}
 }
 class FileFormat {}
-class DataType {}
-class DataTypeWithLength {
-  length: number
+const DATA_TYPE_NAMES = [
+  'CHAR',
+  'VARCHAR',
+  'UUID',
+  'CLOB',
+  'BINARY',
+  'VARBINARY',
+  'BLOB',
+  'DECIMAL',
+  'NUMBER',
+  'FLOAT',
+  'SMALLINT',
+  'INT',
+  'BIGINT',
+  'REAL',
+  'DOUBLE',
+  'BOOLEAN',
+  'DATE',
+  'TIME',
+  'TIMESTAMPE',
+  'INTERVAL',
+// 'REGCLASS', // not supported
+  'TEXT',
+  'BITEA',
+// 'CUSTOM', // not supported
+// 'ARRAY', // not supported
+] as const;
+type DataTypeName = typeof DATA_TYPE_NAMES[number];
+class DataType {
+  constructor(
+    public name: DataTypeName
+  ) {}
 }
-class DataTypeWithOptLength {
-  length?: number
+class Char extends DataType { // Fixed-length character type e.g. CHAR(10)
+  constructor() { super('CHAR'); }
 }
-class Char extends DataTypeWithOptLength {} // Fixed-length character type e.g. CHAR(10)
-class Varchar extends DataTypeWithOptLength {} // Variable-length character type e.g. VARCHAR(10)
-class Uuid extends DataType {} // Uuid type
-class Clob extends DataTypeWithLength {} // Large character object e.g. CLOB(1000)
-class Binary extends DataTypeWithLength {} // Fixed-length binary type e.g. BINARY(10)
-class Varbinary extends DataTypeWithLength {} // Variable-length binary type e.g. VARBINARY(10)
-class Blob extends DataTypeWithLength {} // Large binary object e.g. BLOB(1000)
+class Varchar extends DataType { // Variable-length character type e.g. VARCHAR(10)
+  constructor(public length?: number) { super('VARCHAR'); }
+}
+class Uuid extends DataType { // Uuid type
+  constructor() { super('UUID'); }
+}
+class Clob extends DataType { // Large character object e.g. CLOB(1000)
+  constructor(public length: number) { super('CLOB'); }
+}
+class Binary extends DataType { // Fixed-length binary type e.g. BINARY(10)
+  constructor(public length: number) { super('BINARY'); }
+}
+class Varbinary extends DataType { // Variable-length binary type e.g. VARBINARY(10)
+  constructor(public length: number) { super('VARBINARY'); }
+}
+class Blob extends DataType { // Large binary object e.g. BLOB(1000)
+  constructor(public length: number) { super('BINARY'); }
+}
 class Decimal extends DataType { // Decimal type with optional precision and scale e.g. DECIMAL(10,2)
-  precision: number
-  scale: number
+  constructor( public precision: number, public scale: number) { super('DECIMAL'); }
 }
 class Float extends DataType { // Floating point with optional precision e.g. FLOAT(8)
-  precision: number
+  constructor( public precision: number) { super('FLOAT'); }
 }
-class SmallInt extends DataType {} // Small integer
-class Int extends DataType {} // Integer
-class BigInt extends DataType {} // Big integer
-class Real extends DataType {} // Floating point e.g. REAL
-class Double extends DataType {} // Double e.g. DOUBLE PRECISION
-class Boolean extends DataType {} // Boolean
-class Date extends DataType {} // Date
-class Time extends DataType {} // Time
-class Timestamp extends DataType {} // Timestamp
-class Interval extends DataType {} // Interval
-class Regclass extends DataType {} // Regclass used in postgresql serial
-class Text extends DataType {} // Text
-class Bytea extends DataType {} // Bytea
-class Custom extends DataType {} // Custom type such as enums. not supported.
-class Array extends DataType {} // Arrays. not supported.
+class SmallInt extends DataType { // Small integer
+  constructor() { super('SMALLINT'); }
+}
+class Int extends DataType { // Integer
+  constructor() { super('INT'); }
+}
+class BigInt extends DataType { // Big integer
+  constructor() { super('BIGINT'); }
+}
+class Real extends DataType { // Floating point e.g. REAL
+  constructor() { super('BIGINT'); }
+}
+class Double extends DataType { // Double e.g. DOUBLE PRECISION
+  constructor() { super('DOUBLE'); }
+}
+class Boolean extends DataType { // Boolean
+  constructor() { super('BOOLEAN'); }
+}
+class Date extends DataType { // Date
+  constructor() { super('DATE'); }
+}
+class Time extends DataType { // Time
+  constructor() { super('DATE'); }
+}
+class Timestamp extends DataType { // Timestamp
+  constructor() { super('DATE'); }
+}
+class Interval extends DataType { // Interval
+  constructor() { super('DATE'); }
+}
+class Text extends DataType { // Text
+  constructor() { super('DATE'); }
+}
+class Bytea extends DataType { // Bytea
+  constructor() { super('DATE'); }
+}
 
 class BinaryOperator {
   constructor(
@@ -221,7 +297,7 @@ const parseColumns = (tokenSet: TokenSet, start: number): ParseResult<ColumnsAnd
   let result: ParseResult<void|ColumnDef|TableConstraint|ColumnsAndConstraints> = found(start); // TODO should add Token to generic?
   const columns: ColumnDef[] = [];
   const constraints: TableConstraint[] = [];
-  let idx;
+  let idx: number|undefined = start;
   if (!(consumeToken(tokenSet, start, LPAREN)) ||
        (idx = consumeToken(tokenSet, start, RPAREN)) ) {
     return found(idx, [columns, constraints]);
@@ -256,8 +332,41 @@ const parseTableConstraint = (tokenSet: TokenSet, start: number): ParseResult<Ta
     throw getError('PRIMARY, UNIQUE, FOREIGN, or CHECK', peekToken(tokenSet, result.idx));
   }
 };
-const parseExpr = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
+const PRECEDENCE = {
+  DEFAULT: 0,
+  UNARY_NOT_PREC: 15,
+  BETWEEN_PREC: 20,
+  PLUS_MINUS_PREC: 30,
+} as const;
+type Precedence = typeof PRECEDENCE[keyof typeof PRECEDENCE]; // valueof PRECEDENCE
+const parseExpr = (tokenSet: TokenSet, start: number, precedence: Precedence = PRECEDENCE.DEFAULT): ParseResult<Expr> => {
 };
+const parseDataType = (tokenSet: TokenSet, start: number, expr: Expr, precedence: number): Found<Expr> => {
+  let result: ParseResult<Token|number>
+  const { content } = result = nextMeaningfulToken(tokenSet, start);
+  if (content instanceof Word){
+  }
+};
+const parseOptionalPrecision = (tokenSet: TokenSet, start: number): Found<number|undefined> => {
+  const idx = consumeToken(tokenSet, start, LPAREN);
+  if (idx) {
+    const result = parseLiteralUint(tokenSet, idx);
+    result.idx = expectToken(tokenSet, result.idx, RPAREN).idx;
+    return result;
+  }
+  return found(start);
+};
+const parseLiteralUint = (tokenSet: TokenSet, start: number): Found<number> => {
+  let result: ParseResult<Token|number>
+  const { content } = result = nextMeaningfulToken(tokenSet, start);
+  if (result.content instanceof Num) {
+    result.content = parseInt(result.content.value);
+  } else {
+    throw getError('literal int', content!);
+  }
+  return result as Found<number>;
+};
+
 const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: number): Found<Expr> => {
   let result: ParseResult<void|Expr> = nextMeaningfulToken(tokenSet, start);
   const token = result.content as Token;
@@ -288,16 +397,33 @@ const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: n
   } else if (inKeywords(token, ['NOT','IN','BETWEEN'])) {
     const negated = equalToKeyword(token, 'NOT');
     if ((result = parseKeyword(tokenSet, result.idx, 'IN')) instanceof Found) {
-      return parseIn(token, result.idx, expr, negated);
+      return parseIn(tokenSet, result.idx, expr, negated);
     } else if ((result = parseKeyword(tokenSet, result.idx, 'BETWEEN')) instanceof Found) {
-      return parseIn(token, result.idx, negated);
+      return parseBetween(tokenSet, result.idx, expr, negated);
     } else {
       throw getError('IN or BETWEEN after NOT', peekToken(tokenSet, result.idx));
     }
   }
+  throw new Error('No infix parser for token '+token); // // Can only happen if `getNextPrecedence` got out of sync with this function
 };
-const parseIn = (tokenSet: TokenSet, start: number, expr: Expr, negate: boolean): ParseResult<Ident[]> => {
+const parseBetween = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): Found<Between> => {
+  let result: ParseResult<Expr|Between>;
+  const { content: low } = result = parseExpr(tokenSet, start, PRECEDENCE.BETWEEN_PREC);
+  result = expectKeyword(tokenSet, result.idx, 'AND');
+  const { content: high } = result = parseExpr(tokenSet, start, PRECEDENCE.BETWEEN_PREC);
+  result.content = new Between(expr, negated, low!, high!);
+  return result as Found<Between>;
+};
+const parseIn = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): Found<InList> => {
+  let result: ParseResult<Token|Expr[]|InList>;
   result = expectToken(tokenSet, start, LPAREN);
+  if ((result = parseKeywords(tokenSet, result.idx, ['SELECT','WITH'])) instanceof Found) { // subquery is not supported
+    throw getError('unsupported keyword (SELECT, WITH) after IN', result.content as Token);
+  }
+  result = parseCommaSeparated(tokenSet, start, parseExpr);
+  result.content = new InList(expr, result.content as Expr[], negated);
+  result.idx = expectToken(tokenSet, result.idx, RPAREN).idx;
+  return result as Found<InList>;
 };
 const parseParenthesizedColumnList = (tokenSet: TokenSet, start: number, isOptional: boolean): ParseResult<Ident[]> => {
   const idx = consumeToken(tokenSet, start, LPAREN);
@@ -312,7 +438,7 @@ const parseParenthesizedColumnList = (tokenSet: TokenSet, start: number, isOptio
   }
   return result as ParseResult<Ident[]>;
 };
-function parseCommaSeparated<T>(tokenSet: TokenSet, start: number, callback: (TokenSet, number) => Found<T>): ParseResult<T[]> {
+function parseCommaSeparated<T>(tokenSet: TokenSet, start: number, callback: (tokenSet: TokenSet, idx: number) => Found<T>): ParseResult<T[]> {
   const values: T[] = [];
   let result: ParseResult<void|Token|T|T[]> = notFound(start);
   for(;;) {

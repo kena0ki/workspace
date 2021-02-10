@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "../dist",
     "sourceRoot": "./src", // this points to 'demo/dist/src'
+    "strict": true,
     // "diagnostics": true,
   },
   "include": [
