@@ -13,6 +13,7 @@ import {
   RPAREN,
   COMMA,
   Operator,
+  SingleQuotedString,
 } from './tokenizer';
 import { types } from './data-types';
 import { Keyword } from './keywords';
@@ -112,6 +113,12 @@ class Between implements Expr {
     public high: Expr,
   ) {}
 }
+class TypedString implements Expr {
+  constructor(
+    public dataType: types.DataType,
+    public value: string,
+  ) {}
+}
 class SqlOption {
   constructor(
     public name: Ident,
@@ -161,6 +168,8 @@ function found<T>(idx: number, content?: T): Found<T> { // reuse object. not thr
 }
 class Eof extends Token {} // TODO don't want to extend Token
 const EOF = new Eof('EOF');
+
+class ParseError extends Error {}
 
 export const parse = (src: string) => {
   const tokenSet = tokenize(src);
@@ -215,9 +224,9 @@ const parseColumns = (tokenSet: TokenSet, start: number): ParseResult<ColumnsAnd
        (idx = consumeToken(tokenSet, start, RPAREN)) ) {
     return found(idx, [columns, constraints]);
   }
-  result = parseTableConstraint(tokenSet, start);
+  result = parseOptionalTableConstraint(tokenSet, start);
 }
-const parseTableConstraint = (tokenSet: TokenSet, start: number): ParseResult<TableConstraint> => {
+const parseOptionalTableConstraint = (tokenSet: TokenSet, start: number): ParseResult<TableConstraint> => {
   let result: ParseResult<void|Ident|Ident[]|ObjectName|Unique|ForeignKey|Expr> = parseKeyword(tokenSet, start, 'CONSTRAINT');
   const name = result instanceof Found ? result.content as Ident : undefined;
   result = nextMeaningfulToken(tokenSet, result.idx);
@@ -253,8 +262,36 @@ const PRECEDENCE = {
 } as const;
 type Precedence = typeof PRECEDENCE[keyof typeof PRECEDENCE]; // valueof PRECEDENCE
 const parseExpr = (tokenSet: TokenSet, start: number, precedence: Precedence = PRECEDENCE.DEFAULT): ParseResult<Expr> => {
+  let result: ParseResult<types.DataType|string|TypedString> = tryParseDataType(tokenSet, start);
+  if (result instanceof Found) {
+    const dataType = result.content as types.DataType;
+    const { content: value } = result = expectLiteralString(tokenSet, start);
+    result.content = new TypedString(dataType!, value!);
+    return result as Found<TypedString>;
+  }
+  result = nextMeaningfulToken(tokenSet, result.idx);
 };
-const parseDataType = (tokenSet: TokenSet, start: number, expr: Expr, precedence: number): Found<types.DataType> => {
+const expectLiteralString = (tokenSet: TokenSet, start: number): Found<string> => {
+  const result = peekToken(tokenSet, start);
+  if (result instanceof Found && result.content instanceof SingleQuotedString) {
+    result.content = result.content.value;
+    return result as Found<string>;
+  } else if (result instanceof Found) {
+    throw getError('literal string', result.content);
+  }
+  throw getError('literal string', EOF);
+};
+const parsePrefix = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
+};
+const tryParseDataType = (tokenSet: TokenSet, start: number): NotFound|Found<types.DataType> => {
+  try {
+    return parseDataType(tokenSet, start);
+  } catch(err) {
+    if (err instanceof ParseError) return notFound(start);
+    throw err;
+  }
+}
+const parseDataType = (tokenSet: TokenSet, start: number): Found<types.DataType> => {
   let result: ParseResult<Token|number|[number,number]|types.DataType>;
   const { content } = result = nextMeaningfulToken(tokenSet, start);
   if (content instanceof Word){
@@ -293,6 +330,8 @@ const parseDataType = (tokenSet: TokenSet, start: number, expr: Expr, precedence
     } else {
       throw getError('a data type name', content);
     }
+  } else {
+    throw getError('a data type name', content!);
   }
   return result as Found<types.DataType>;
 };
@@ -329,8 +368,8 @@ const parseOptionalPrecision = (tokenSet: TokenSet, start: number): NotFound|Fou
 const parseLiteralUint = (tokenSet: TokenSet, start: number): Found<number> => {
   let result: ParseResult<Token|number>;
   const { content } = result = nextMeaningfulToken(tokenSet, start);
-  if (result.content instanceof Num) {
-    result.content = parseInt(result.content.value);
+  if (content instanceof Num) {
+    result.content = parseInt(content.value);
   } else {
     throw getError('literal int', content!);
   }
@@ -339,6 +378,7 @@ const parseLiteralUint = (tokenSet: TokenSet, start: number): Found<number> => {
 
 const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: number): Found<Expr> => {
   let result: ParseResult<void|Expr> = nextMeaningfulToken(tokenSet, start);
+  if (result.content instanceof Eof) throw new ParseError('unexpected EOF while parsing infix');  // Can only happen if `getNextPrecedence` got out of sync with this function
   const token = result.content as Token;
   if (token instanceof Operator /* TODO precise condition  */ || inKeywords(token, ['AND','OR','LIKE'])) {
     const { content: right } = result = parseExpr(tokenSet, result.idx);
@@ -374,7 +414,7 @@ const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: n
       throw getError('IN or BETWEEN after NOT', peekToken(tokenSet, result.idx));
     }
   }
-  throw new Error('No infix parser for token '+token); // // Can only happen if `getNextPrecedence` got out of sync with this function
+  throw new ParseError('No infix parser for token '+token.value); // Can only happen if `getNextPrecedence` got out of sync with this function
 };
 const parseBetween = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): Found<Between> => {
   let result: ParseResult<Expr|Between>;
@@ -426,22 +466,16 @@ const parseObjectName = (tokenSet: TokenSet, start: number): Found<ObjectName> =
   for(;;) {
     result = parseIdentifier(tokenSet, result.idx);
     idents.push(result.content as Ident);
-    result = nextMeaningfulToken(tokenSet, result.idx); // TODO unnecessary?
     const idx = consumeToken(tokenSet, result.idx, COLON);
     if(idx) result = nextMeaningfulToken(tokenSet, idx);
     else break;
   }
-  result!.content = new ObjectName(idents); // TODO why needs bang?
+  result.content = new ObjectName(idents);
   return result as Found<ObjectName>;
 };
 const parseIdentifier = (tokenSet: TokenSet, start: number): Found<Ident> => {
-  let result: ParseResult<void|Ident>;
-  try {
-    result = nextMeaningfulToken(tokenSet, start);
-  } catch(cause) {
-    if(cause instanceof Eof) throw getError('identifier', 'EOF');
-    else throw cause;
-  }
+  const result: ParseResult<Ident|Token> = nextMeaningfulToken(tokenSet, start);
+  if(result.content instanceof Eof) throw getError('identifier', result.content);
   const token = result.content as Token;
   if(token instanceof DelimitedIdent) {
     result.content = new Ident(token.content, token.delimiter);
@@ -462,7 +496,7 @@ const expectKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]):
   keywords.forEach(keyword => idx = expectKeyword(tokenSet, idx, keyword));
   return idx;
 };
-const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): NotFound|Found<Token> => {
+const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): NotFound|Found<Token|Eof> => {
   const token = peekToken(tokenSet, start);
   return equalToKeyword(token, keyword) ? nextMeaningfulToken(tokenSet, start) : notFound(start);
 };
@@ -474,19 +508,18 @@ const parseKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): 
   return result;
 };
 const expectToken = (tokenSet: TokenSet, start: number, expected: Token): number => {
-  const actual = peekToken(tokenSet, start);
-  if (actual.value === expected.value) return nextMeaningfulToken(tokenSet, start).idx;
-  throw getError(expected.value, actual.value);
+  const result = nextMeaningfulToken(tokenSet, start);
+  if (result.content instanceof Token && result.content.value === expected.value) return result.idx;
+  throw getError(expected.value, result.content!);
 };
 const consumeToken = (tokenSet: TokenSet, start: number, consumedToken: Token): number|undefined => {
-  const token = peekToken(tokenSet, start);
-  if(token.value === consumedToken.value) return nextMeaningfulToken(tokenSet, start).idx;
+  const result = nextMeaningfulToken(tokenSet, start);
+  if(result.content instanceof Token && result.content.value === consumedToken.value) return result.idx;
 };
-const nextMeaningfulToken = (tokenSet: TokenSet, start: number): Found<Token> => {
+const nextMeaningfulToken = (tokenSet: TokenSet, start: number): Found<Token|Eof> => {
   let i=start;
   while(i<tokenSet.length && tokenSet[i] instanceof Whitespace) i++;
-  if (tokenSet.length<=i) throw EOF;
-  return new Found<Token>(i+1, tokenSet[i]);
+  return tokenSet.length<=i ? new Found(Infinity, EOF) : new Found(i+1, tokenSet[i]);
 };
 const peekToken = (tokenSet: TokenSet, start: number): Token|Eof => {
   let i=start;
@@ -495,5 +528,5 @@ const peekToken = (tokenSet: TokenSet, start: number): Token|Eof => {
 };
 const equalToKeyword = tokenUtil.equalToKeyword;
 const inKeywords = (token: Token, keywords: Keyword[]): boolean => keywords.some(keyword => tokenUtil.equalToKeyword(token, keyword));
-const getError = (expected: string, actual: Token|string): Error => new Error();
+const getError = (expected: string, actual: Token|string|Eof): ParseError => new ParseError();
 
