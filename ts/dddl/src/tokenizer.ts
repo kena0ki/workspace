@@ -1,31 +1,6 @@
 import { logger, wrapError } from './util';
-const KEYWORDS = [ // only contains keywords that is necessary for create statements
-  'CREATE',
-  'TABLE',
-  'OR',
-  'REPLACE',
-  'IF',
-  'NOT',
-  'EXISTS',
-  'CONSTRAINT',
-  'PRIMARY',
-  'UNIQUE',
-  'KEY',
-  'FOREIGN',
-  'REFERENCES',
-  'CHECK',
-  'AND',
-  'OR',
-  'LIKE',
-  'NOT',
-  'IN',
-  'IS',
-  'NULL',
-  'BETWEEN',
-  'SELECT',
-  'WITH',
-] as const;
-export type Keyword = typeof KEYWORDS[number];
+import { Keyword } from './keywords';
+
 export class Token {
   constructor(private _value: string) { }
   get value(): string { return this._value; }

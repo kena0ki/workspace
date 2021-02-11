@@ -7,7 +7,6 @@ import {
   Word,
   DelimitedIdent,
   Num,
-  Keyword,
   COLON,
   SEMICOLON,
   LPAREN,
@@ -16,6 +15,7 @@ import {
   Operator,
 } from './tokenizer';
 import { types } from './data-types';
+import { Keyword } from './keywords';
 
 interface Ast {}
 interface Statement extends Ast {}
@@ -225,22 +225,22 @@ const parseTableConstraint = (tokenSet: TokenSet, start: number): ParseResult<Ta
   if (inKeywords(token, ['PRIMARY', 'UNIQUE'])) {
     const isPrimary = equalToKeyword(token, 'PRIMARY');
     if (isPrimary) {
-      result = expectKeyword(tokenSet, result.idx, 'KEY');
+      result.idx = expectKeyword(tokenSet, result.idx, 'KEY');
     }
     result = parseParenthesizedColumnList(tokenSet, result.idx, false);
     result.content = new Unique(name, result.content as Ident[], isPrimary);
     return result as Found<Unique>;
   } else if (equalToKeyword(token, 'FOREIGN')) {
-    result = expectKeyword(tokenSet, result.idx, 'KEY');
+    result.idx = expectKeyword(tokenSet, result.idx, 'KEY');
     const { content: columns } = result = parseParenthesizedColumnList(tokenSet, result.idx, false);
-    result = expectKeyword(tokenSet, result.idx, 'REFERENCES');
+    result.idx = expectKeyword(tokenSet, result.idx, 'REFERENCES');
     const { content: foreignTable } = result = parseObjectName(tokenSet, result.idx);
     const { content: referredColumns } = result = parseParenthesizedColumnList(tokenSet, result.idx, false);
     result.content = new ForeignKey(name, columns!, foreignTable!, referredColumns!);
   } else if (equalToKeyword(token, 'CHECK')) {
-    result = expectToken(tokenSet, result.idx, LPAREN);
+    result.idx = expectToken(tokenSet, result.idx, LPAREN);
     result = parseExpr(tokenSet, result.idx);
-    result = expectToken(tokenSet, result.idx, RPAREN);
+    result.idx = expectToken(tokenSet, result.idx, RPAREN);
   } else {
     throw getError('PRIMARY, UNIQUE, FOREIGN, or CHECK', peekToken(tokenSet, result.idx));
   }
@@ -277,7 +277,21 @@ const parseDataType = (tokenSet: TokenSet, start: number, expr: Expr, precedence
       } else {
         result.content = types.mapperOptP[content.value]();
       }
+    } else if (equalToKeyword(content, 'DOUBLE')) {
+      result = parseKeyword(tokenSet, result.idx, 'PRECISION');
+      let dbl = content.value;
+      if (result instanceof Found) dbl += ' ' + result.content;
+      result.content = types.mapperNoArgs[dbl as types.DataTypeNameNoArgs]; // TODO type assertion
+    } else if (inKeywords(content, ['TIME', 'TIMESTAMP'])) {
+      if ((result = parseKeyword(tokenSet, result.idx, 'WITH')) instanceof Found ||
+          (result = parseKeyword(tokenSet, result.idx, 'WITHOUT')) instanceof Found) {
+        result.idx = expectKeywords(tokenSet, result.idx, ['WITH', 'ZONE']);
+      }
+      result.content = types.mapperNoArgs[content.value as types.DataTypeNameNoArgs]; // TODO type assertion
     } else if (types.isDataTypeNameNoArgs(content.value)) {
+      result.content = types.mapperNoArgs[content.value];
+    } else {
+      throw getError('a data type name', content);
     }
   }
   return result as Found<types.DataType>;
@@ -365,8 +379,8 @@ const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: n
 const parseBetween = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): Found<Between> => {
   let result: ParseResult<Expr|Between>;
   const { content: low } = result = parseExpr(tokenSet, start, PRECEDENCE.BETWEEN_PREC);
-  result = expectKeyword(tokenSet, result.idx, 'AND');
-  const { content: high } = result = parseExpr(tokenSet, start, PRECEDENCE.BETWEEN_PREC);
+  result.idx = expectKeyword(tokenSet, result.idx, 'AND');
+  const { content: high } = result = parseExpr(tokenSet, result.idx, PRECEDENCE.BETWEEN_PREC);
   result.content = new Between(expr, negated, low!, high!);
   return result as Found<Between>;
 };
@@ -438,10 +452,15 @@ const parseIdentifier = (tokenSet: TokenSet, start: number): Found<Ident> => {
   }
   return result as ParseResult<Ident>;
 };
-const expectKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): Found<Token> => {
+const expectKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): number => {
   const token = peekToken(tokenSet, start);
-  if (equalToKeyword(token, keyword)) return nextMeaningfulToken(tokenSet, start);
+  if (equalToKeyword(token, keyword)) return nextMeaningfulToken(tokenSet, start).idx;
   throw getError(keyword, token);
+};
+const expectKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): number => {
+  let idx = start;
+  keywords.forEach(keyword => idx = expectKeyword(tokenSet, idx, keyword));
+  return idx;
 };
 const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): NotFound|Found<Token> => {
   const token = peekToken(tokenSet, start);

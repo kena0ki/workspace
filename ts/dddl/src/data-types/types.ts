@@ -2,7 +2,7 @@
 // We only support major data types.
 // Data type definition might not strictly follow the spec. E.g., `length` of CHAR is optional according to the spec but we enforce to define `length`.
 
-const DATA_TYPE_NAMES_L = [
+export const DATA_TYPE_NAMES_L = [
   'CHAR',
   'CHARACTER',
 //  'CHAR VARYING', // not supported
@@ -13,20 +13,20 @@ const DATA_TYPE_NAMES_L = [
   'VARBINARY',
   'BLOB',
 ] as const;
-type DataTypeNameL = typeof DATA_TYPE_NAMES_L[number];
-const DATA_TYPE_NAMES_OPT_P_S = [
+export type DataTypeNameL = typeof DATA_TYPE_NAMES_L[number];
+export const DATA_TYPE_NAMES_OPT_P_S = [
   'DECIMAL',
   'DEC',
   'NUMBER',
   'NUMERIC',
 ] as const;
-type DataTypeNameOptPS = typeof DATA_TYPE_NAMES_OPT_P_S[number];
-const DATA_TYPE_NAMES_OPT_P = [
+export type DataTypeNameOptPS = typeof DATA_TYPE_NAMES_OPT_P_S[number];
+export const DATA_TYPE_NAMES_OPT_P = [
   'FLOAT',
 ] as const;
-type DataTypeNameOptP = typeof DATA_TYPE_NAMES_OPT_P[number];
-const DATA_TYPE_NAMES_NO_ARGS = [
-//  'UUID', // not supported
+export type DataTypeNameOptP = typeof DATA_TYPE_NAMES_OPT_P[number];
+export const DATA_TYPE_NAMES_NO_ARGS = [
+// 'UUID', // not supported
   'SMALLINT',
   'INT',
   'INTEGER',
@@ -38,21 +38,21 @@ const DATA_TYPE_NAMES_NO_ARGS = [
   'DATE',
   'TIME',
   'TIMESTAMP',
-  'INTERVAL',
+// 'INTERVAL', // not supported
 // 'REGCLASS', // not supported
   'TEXT',
-  'BYTEA',
+// 'BYTEA', // not supported
 // 'CUSTOM', // not supported
 // 'ARRAY', // not supported
 ] as const;
-type DataTypeNameNoArgs = typeof DATA_TYPE_NAMES_NO_ARGS[number];
-const DATA_TYPE_NAMES = [
+export type DataTypeNameNoArgs = typeof DATA_TYPE_NAMES_NO_ARGS[number];
+export const DATA_TYPE_NAMES = [
   ...DATA_TYPE_NAMES_L,
   ...DATA_TYPE_NAMES_OPT_P_S,
   ...DATA_TYPE_NAMES_OPT_P,
   ...DATA_TYPE_NAMES_NO_ARGS,
 ] as const;
-type DataTypeName = typeof DATA_TYPE_NAMES[number];
+export type DataTypeName = typeof DATA_TYPE_NAMES[number];
 
 export class DataType {
   constructor(public name: DataTypeName) {}
@@ -126,14 +126,8 @@ export class Time extends DataType { // Time
 export class Timestamp extends DataType { // Timestamp
   constructor() { super('TIMESTAMP'); }
 }
-export class Interval extends DataType { // Interval
-  constructor() { super('INTERVAL'); }
-}
 export class Text extends DataType { // Text
   constructor() { super('TEXT'); }
-}
-export class Bytea extends DataType { // Bytea
-  constructor() { super('BYTEA'); }
 }
 
 const SMALLINT = new SmallInt;
@@ -147,14 +141,13 @@ const BOOLEAN = new Boolean;
 const DATE = new Date;
 const TIME = new Time;
 const TIMESTAMP = new Timestamp;
-const INTERVAL = new Interval;
 const TEXT = new Text;
-const BYTEA = new Bytea;
 
 export const mapperL: { [key in DataTypeNameL]: (length: number) => DataType } = {
   'CHAR':      (length: number) => new Char(length),
   'CHARACTER': (length: number) => new Character(length),
   'VARCHAR':   (length: number) => new Varchar(length),
+  // TODO followings are not supported by orginal parser
   'CLOB':      (length: number) => new Clob(length),
   'BINARY':    (length: number) => new Binary(length),
   'VARBINARY': (length: number) => new Varbinary(length),
@@ -169,24 +162,23 @@ export const mapperOptPS: { [key in DataTypeNameOptPS]: (precision?: number, sca
 export const mapperOptP: { [key in DataTypeNameOptP]: (precision?: number) => DataType } = {
   'FLOAT':     (precision?: number) => new Float(precision),
 };
-export const mapperNoArgs: { [key in DataTypeNameNoArgs]: (lenOrPr: number, scale: number) => DataType } = {
-  'SMALLINT':         () => SMALLINT,
-  'INT':              () => INT,
-  'INTEGER':          () => INTEGER,
-  'BIGINT':           () => BIGINT,
-  'REAL':             () => REAL,
-  'DOUBLE PRECISION': () => DOUBLE_PRECISION,
-  'DOUBLE':           () => DOUBLE,
-  'BOOLEAN':          () => BOOLEAN,
-  'DATE':             () => DATE,
-  'TIME':             () => TIME,
-  'TIMESTAMP':        () => TIMESTAMP,
-  'INTERVAL':         () => INTERVAL,
-  'TEXT':             () => TEXT,
-  'BYTEA':            () => BYTEA,
+export const mapperNoArgs: { [key in DataTypeNameNoArgs]: DataType } = {
+  'SMALLINT':         SMALLINT,
+  'INT':              INT,
+  'INTEGER':          INTEGER,
+  'BIGINT':           BIGINT,
+  'REAL':             REAL,
+  'DOUBLE PRECISION': DOUBLE_PRECISION,
+  'DOUBLE':           DOUBLE,
+  'BOOLEAN':          BOOLEAN,
+  'DATE':             DATE,
+  'TIME':             TIME,
+  'TIMESTAMP':        TIMESTAMP,
+  'TEXT':             TEXT,
 };
 
-export const isDataTypeName = (name: string|DataTypeName): name is DataTypeName => DATA_TYPE_NAMES.includes(name as DataTypeName); // narrow down string to DataTypeName
+ // narrow down string to data type names
+export const isDataTypeName = (name: string|DataTypeName): name is DataTypeName => DATA_TYPE_NAMES.includes(name as DataTypeName);
 export const isDataTypeNameL = (name: string|DataTypeNameL): name is DataTypeNameL => DATA_TYPE_NAMES_L.includes(name as DataTypeNameL);
 export const isDataTypeNameOptPS = (name: string|DataTypeNameOptPS): name is DataTypeNameOptPS => DATA_TYPE_NAMES_OPT_P_S.includes(name as DataTypeNameOptPS);
 export const isDataTypeNameOptP = (name: string|DataTypeNameOptP): name is DataTypeNameOptP => DATA_TYPE_NAMES_OPT_P.includes(name as DataTypeNameOptP);
