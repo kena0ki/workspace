@@ -369,7 +369,7 @@ Array [
     "_value": " ",
   },
   HexStringLiteral {
-    "_content": "'hex string'",
+    "_content": "hex string",
     "_prefix": "X",
     "_value": "X'hex string'",
   },
@@ -383,7 +383,7 @@ Array [
     "_value": " ",
   },
   HexStringLiteral {
-    "_content": "'hex string2'",
+    "_content": "hex string2",
     "_prefix": "x",
     "_value": "x'hex string2'",
   },
@@ -419,7 +419,7 @@ Array [
     "_value": " ",
   },
   NationalStringLiteral {
-    "_content": "'national string'",
+    "_content": "national string",
     "_prefix": "N",
     "_value": "N'national string'",
   },
@@ -455,6 +455,7 @@ Array [
     "_value": " ",
   },
   SingleQuotedString {
+    "_content": "character '' string",
     "_value": "'character '' string'",
   },
   Comma {

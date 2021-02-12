@@ -23,8 +23,11 @@ export class DelimitedIdent extends Token {
   get content(): string { return this._content; }
   get delimiter(): string { return this._delimiter; }
 }
-export class SingleQuotedString extends Token {}
-export class Num extends Token {}
+export class SingleQuotedString extends Token {
+  constructor(private _content: string) { super(`'` + _content + `'`); }
+  get content(): string { return this._content; }
+}
+export class Number extends Token {}
 export class LParen extends Token {}
 export class RParen extends Token {}
 export class Comma extends Token {}
@@ -34,7 +37,7 @@ export class BinaryOperator extends Operator {}
 export class Other extends Token {}
 
 export class NonCharcterStringLiteral extends Token {
-  constructor(private _content: string, private _prefix: string) { super(_prefix + _content); }
+  constructor(private _content: string, private _prefix: string) { super(_prefix + `'` + _content + `'`); }
   get content(): string { return this._content; }
   get prefix(): string { return this._prefix; }
 }
@@ -106,7 +109,7 @@ const rule: Rule = {
   // delimited (quoted) identifier
   delimitedIdent: chars => new DelimitedIdent(takeWhileOrError(chars.slice(1), 1, c => ~~(c !== chars[0]), TOKENIZE_DELIMITED_STRING_ERROR), chars[0]),
   // number
-  num: chars => new Num(takeWhile(chars, 1, c => ~~(isDigit(c) || c === '.')) ),
+  num: chars => new Number(takeWhile(chars, 1, c => ~~(isDigit(c) || c === '.')) ),
   // puctuations
   '(': () => LPAREN,
   ')': () => RPAREN,
@@ -210,7 +213,10 @@ const delimiters = ['"']; // TODO dialect
 const isDelimitedIdentifierStart = (ch: string): boolean => delimiters.includes(ch);
 const isIdentifierStart = (ch: string): boolean => ['@', '#', '_'].includes(ch) ||  ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
 const isIdentifierPart = (ch: string): boolean => ['@', '$', '#', '_'].includes(ch) || ('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z');
-const tokenizeSingleQuotedString = (chars: string[]): string => takeWhileOrError(chars, 2, tokenizeSingleQuotedStringAdvanceBy, TOKENIZE_SINGLE_QUOTED_STRING_ERROR);
-const tokenizeSingleQuotedStringAdvanceBy = (c:string,i:number,chars:string[]):number => chars[i-1] !== '\'' ? 1 : (chars[i-1] === '\'' && c === '\'') ? 2 : 0;
+const tokenizeSingleQuotedString = (chars: string[]): string => takeWhileOrError(chars.slice(1), 0, tokenizeSingleQuotedStringAdvanceBy, TOKENIZE_SINGLE_QUOTED_STRING_ERROR);
+const tokenizeSingleQuotedStringAdvanceBy = (c:string,i:number,chars:string[]):number => c !== '\'' ? 1 : (c === '\'' && chars[i+1] === '\'') ? 2 : 0;
 const tokenizeIdentifier = (chars: string[]): string => takeWhile(chars, 1, c => ~~isIdentifierPart(c));
+
+export * from './tokenizer';
+export * as token from './tokenizer';
 
