@@ -178,9 +178,9 @@ export const mapperNoArgs: { [key in DataTypeNameNoArgs]: DataType } = {
 };
 
  // narrow down string to data type names
-export const inDataTypeName = (name: string|DataTypeName): name is DataTypeName => DATA_TYPE_NAMES.includes(name as DataTypeName);
-export const inDataTypeNameL = (name: string|DataTypeNameL): name is DataTypeNameL => DATA_TYPE_NAMES_L.includes(name as DataTypeNameL);
-export const inDataTypeNameOptPS = (name: string|DataTypeNameOptPS): name is DataTypeNameOptPS => DATA_TYPE_NAMES_OPT_P_S.includes(name as DataTypeNameOptPS);
-export const inDataTypeNameOptP = (name: string|DataTypeNameOptP): name is DataTypeNameOptP => DATA_TYPE_NAMES_OPT_P.includes(name as DataTypeNameOptP);
-export const inDataTypeNameNoArgs = (name: string|DataTypeNameNoArgs): name is DataTypeNameNoArgs => DATA_TYPE_NAMES_NO_ARGS.includes(name as DataTypeNameNoArgs);
+export const isDataTypeName = (name: string|DataTypeName): name is DataTypeName => DATA_TYPE_NAMES.includes(name as DataTypeName);
+export const isDataTypeNameL = (name: string|DataTypeNameL): name is DataTypeNameL => DATA_TYPE_NAMES_L.includes(name as DataTypeNameL);
+export const isDataTypeNameOptPS = (name: string|DataTypeNameOptPS): name is DataTypeNameOptPS => DATA_TYPE_NAMES_OPT_P_S.includes(name as DataTypeNameOptPS);
+export const isDataTypeNameOptP = (name: string|DataTypeNameOptP): name is DataTypeNameOptP => DATA_TYPE_NAMES_OPT_P.includes(name as DataTypeNameOptP);
+export const isDataTypeNameNoArgs = (name: string|DataTypeNameNoArgs): name is DataTypeNameNoArgs => DATA_TYPE_NAMES_NO_ARGS.includes(name as DataTypeNameNoArgs);
 

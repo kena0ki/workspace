@@ -1,9 +1,14 @@
-import { types } from '../data-types';
-import { BinaryOperator } from './operators';
+import { DataType } from '../data-types';
+import { BinaryOperator, UnaryOperator } from './operators';
 
 export interface Expr {}
+export class UnaryOp implements Expr {
+  constructor(
+    public op: UnaryOperator,
+    public expr: Expr,
+  ) {}
+}
 export class BinaryOp implements Expr {
-  private: undefined
   constructor(
     public left: Expr,
     public op: BinaryOperator,
@@ -37,8 +42,22 @@ export class Between implements Expr {
 }
 export class TypedString implements Expr {
   constructor(
-    public dataType: types.DataType,
+    public dataType: DataType,
     public value: string,
+  ) {}
+}
+export class Case implements Expr {
+  constructor(
+    public operand: undefined|Expr,
+    public conditions: Expr[],
+    public results: Expr[],
+    public elseResult: undefined|Expr,
+  ) {}
+}
+export class Cast implements Expr {
+  constructor(
+    public expr: Expr,
+    public dataType: DataType,
   ) {}
 }
 

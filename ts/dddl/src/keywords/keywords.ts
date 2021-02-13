@@ -32,6 +32,13 @@ export const KEYWORDS = [ // only contains keywords that is necessary for create
   'FALSE',
   'CASE',
   'WHEN',
+  'ELSE',
+  'END',
+  'CAST',
+  'AS',
+  'EXTRACT',
+  'INTERVAL', // should be defined as a data type name, but we are commenting it out there since we are not supporting it now
+  'LISTAGG',
   ...types.DATA_TYPE_NAMES,
 ] as const;
 export type Keyword = typeof KEYWORDS[number];
