@@ -66,7 +66,7 @@ class Check implements TableConstraint {
   ) {}
 }
 class SqlOption {}
-class Ident {
+export class Ident {
   constructor(
     public value: string,
     public quoteStyle?: string,
@@ -77,10 +77,10 @@ class FileFormat {}
 type ParseResult<T> = [number,T];
 
 class Eof {
-  private eof = undefined;
+  private _eof?: never;
   public value = 'EOF';
 }
-const EOF = new Eof();
+const EOF = new Eof;
 
 class ParseError extends Error {}
 
@@ -178,28 +178,62 @@ const parseExpr = (tokenSet: TokenSet, start: number, precedence: Precedence = P
   const prevIdx = idx;
   let [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof tk.Word) {
-    if (keywords.isOneOfKeywords(token.value, ['TRUE','FALSE','NULL'])) {
+    const word = token;
+    if (keywords.isOneOfKeywords(word.value, ['TRUE','FALSE','NULL'])) {
       return expectValue(tokenSet, prevIdx);
-    } else if (keywords.isKeyword(token.value, 'CASE')) {
+    } else if (keywords.isKeyword(word.value, 'CASE')) {
       return parseCase(tokenSet, idx);
-    } else if (keywords.isKeyword(token.value, 'CAST')) {
+    } else if (keywords.isKeyword(word.value, 'CAST')) {
       return parseCase(tokenSet, idx);
-    } else if (keywords.isKeyword(token.value, 'EXISTS')) {
+    } else if (keywords.isKeyword(word.value, 'EXISTS')) {
       throw unsupportedExprssion(peekToken(tokenSet, idx));
-    } else if (keywords.isKeyword(token.value, 'EXTRACT')) {
+    } else if (keywords.isKeyword(word.value, 'EXTRACT')) {
       throw unsupportedExprssion(peekToken(tokenSet, idx));
-    } else if (keywords.isKeyword(token.value, 'INTERVAL')) {
+    } else if (keywords.isKeyword(word.value, 'INTERVAL')) {
       throw unsupportedExprssion(peekToken(tokenSet, idx));
-    } else if (keywords.isKeyword(token.value, 'LISTAGG')) {
+    } else if (keywords.isKeyword(word.value, 'LISTAGG')) {
       throw unsupportedExprssion(peekToken(tokenSet, idx));
-    } else if (keywords.isKeyword(token.value, 'NOT')) {
+    } else if (keywords.isKeyword(word.value, 'NOT')) {
       const [,expr] = [idx] = parseExpr(tokenSet, idx);
       return [idx, new exprs.UnaryOp(new ops.UnaryOperator('NOT'), expr)];
     }
+  }
+  if (token instanceof tk.Word || token instanceof tk.DelimitedIdent) {
+    const word = token;
     token = peekToken(tokenSet, idx); // TODO why can't use const
     if (token === tk.LPAREN || token === tk.PERIOD) {
+      const idents = [toIdent(word)];
+      let endWithWildcard = false;
+      let optIdx;
+      while ((optIdx = consumeToken(tokenSet, idx, tk.PERIOD))) {
+        const [,token] = [idx] = nextMeaningfulToken(tokenSet, optIdx);
+        if (token instanceof tk.Word) {
+          idents.push(new Ident(token.value));
+        } else if (token === tk.MULT) {
+          endWithWildcard = true;
+          break;
+        }
+        throw getError(`an identifier or a '*' after '.'`, token);
+      }
+      if (endWithWildcard) {
+        return [idx, new exprs.QualifiedWildcard(idents)];
+      }
+      optIdx = consumeToken(tokenSet, idx, tk.LPAREN);
+      if (optIdx) {
+        // here we would have to parse a function but we not supports it. so just skip to the function end.
+        let lparenCounter=1;
+        do {
+          const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
+          if (token === tk.RPAREN) lparenCounter--;
+          else if (token === tk.LPAREN) lparenCounter++;
+          else if (token instanceof Eof) throw getError(`')'`, token);
+        } while(lparenCounter);
+        return [idx, new exprs.Function()];
+      }
+      return [idx, new exprs.Identifier(toIdent(word))];
     }
   }
+  if (token === tk.MULT) return [idx, new exprs.Wildcard()];
 };
 const parseCast = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
   let idx: number = start;
@@ -230,7 +264,7 @@ const parseCase = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
   } while(found);
   [,found] = [idx] = parseKeyword(tokenSet, idx, 'ELSE');
   let elseResult;
-  if (found) elseResult = parseExpr(tokenSet, idx);
+  if (found) [,elseResult] = parseExpr(tokenSet, idx);
   idx = expectKeyword(tokenSet, idx, 'END');
   return [idx, new exprs.Case(operand, conditions, results, elseResult)];
 };
@@ -241,10 +275,15 @@ const expectValue = (tokenSet: TokenSet, start: number): ParseResult<Value<boole
       else if (keywords.isKeyword(token.value, 'NULL')) return [idx, new values.Null];
       throw getError('a concrete value', token);
     }
-    if (token instanceof tk.Number) return [idx, new values.Number(token.value)]; // TODO should validate?
-    else if (token instanceof tk.SingleQuotedString) return [idx, new values.SingleQuotedString(token.value)];
-    else if (token instanceof tk.NationalStringLiteral) return [idx, new values.NationalStringLiteral(token.value)];
-    else if (token instanceof tk.HexStringLiteral) return [idx, new values.HexStringLiteral(token.value)];
+    if (token instanceof tk.Number) {
+      return [idx, new values.Number(token.value)]; // TODO should validate?
+    } else if (token instanceof tk.SingleQuotedString) {
+      return [idx, new values.SingleQuotedString(token.content)];
+    } else if (token instanceof tk.NationalStringLiteral) {
+      return [idx, new values.NationalStringLiteral(token.content, token.prefix)];
+    } else if (token instanceof tk.HexStringLiteral) {
+      return [idx, new values.HexStringLiteral(token.content, token.prefix)];
+    }
     throw getError('a value', token);
 };
 const expectLiteralString = (tokenSet: TokenSet, start: number): ParseResult<string> => {
@@ -329,12 +368,12 @@ const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: P
   const [,token] = [idx] = nextMeaningfulToken(tokenSet, start);
   if (token instanceof Eof) throw new ParseError('unexpected EOF while parsing infix');  // Can only happen if `getNextPrecedence` got out of sync with this function
   if (token instanceof tk.Operator /* TODO precise condition  */ || inKeywords(token, ['AND','OR','LIKE'])) {
-    const [right] = [idx] = parseExpr(tokenSet, idx);
+    const [,right] = [idx] = parseExpr(tokenSet, idx);
     return [idx, new exprs.BinaryOp(expr, new ops.BinaryOperator(token.value), right)];
   }
   const [,found] = [idx] = parseKeywords(tokenSet, idx, ['NOT', 'LIKE']);
   if(found) {
-    const [ right ] = [idx] = parseExpr(tokenSet, idx, precedence);
+    const [,right] = [idx] = parseExpr(tokenSet, idx, precedence);
     return [idx, new exprs.BinaryOp(expr, new ops.BinaryOperator('NOT LIKE'), right)];
   }
   if (equalToKeyword(token, 'IS')) {
@@ -457,5 +496,7 @@ const peekToken = (tokenSet: TokenSet, start: number): Token|Eof => {
 const equalToKeyword = (token: Token|Eof, keyword: Keyword): boolean => token instanceof tk.Word && token.value === keyword;
 const inKeywords = (token: Token, keywords: Keyword[]): boolean => keywords.some(keyword => tk.tokenUtil.equalToKeyword(token, keyword)); // TODO delete
 const getError = (expected: string, actual: Token|string|Eof): ParseError => new ParseError();
-const unsupportedExprssion = (token: Token|Eof): ParseError => new ParseError('Unsupported expression found: ' + token.value);
+const unsupportedExprssion = (token: Token|Eof): ParseError => new ParseError('An unsupported expression found: ' + token.value);
+const toIdent = (wordOrIdent: tk.Word|tk.DelimitedIdent): Ident =>
+  wordOrIdent instanceof tk.Word ? new Ident(wordOrIdent.value) : new Ident(wordOrIdent.content,wordOrIdent.delimiter);
 
