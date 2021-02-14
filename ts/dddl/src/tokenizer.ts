@@ -13,7 +13,7 @@ export const tokenUtil = {
 };
 export class Whitespace extends Token {}
 export class NewLine extends Whitespace {}
-export class WordIdent extends Whitespace {}
+export class WordIdent extends Token {}
 export class Word extends WordIdent { // keyword or (delimited) identifier
 //  constructor(private _content: string, private _delimiter?: string) { super(_delimiter + _content + _delimiter); }
 //  get content(): string { return this._content; }
@@ -33,7 +33,7 @@ export class Number extends Token {}
 export class LParen extends Token {}
 export class RParen extends Token {}
 export class Comma extends Token {}
-export class Cmmnt extends Token {}
+export class Cmmnt extends Whitespace {}
 export class Operator extends Token {}
 export class BinaryOperator extends Operator {}
 export class Other extends Token {}

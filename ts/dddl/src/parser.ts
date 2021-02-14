@@ -1,8 +1,9 @@
-import { token as tk, Token, TokenSet, } from './tokenizer';
+import { token as tk, Token, TokenSet } from './tokenizer';
 import { types, DataType } from './data-types';
 import { keywords, Keyword } from './keywords';
 import { exprs, Expr, values, Value, ops } from './expressions';
 import { ColumnOption, columnOptions as colOpts } from './column-options';
+import { logger } from './util';
 
 interface Ast {}
 interface Statement extends Ast {}
@@ -89,38 +90,58 @@ const EOF = new Eof;
 
 class ParseError extends Error {}
 
-export const parse = (src: string) => {
+export const parse = (src: string): Statement[]|ParseError => {
   const tokenSet = tk.tokenize(src);
   const statements: Statement[] = [];
   let expectingStatementDelimiter = false;
   let idx: number = 0;
-  for(;;) {
-    for(;;) { // ignore empty statements (between consecutive semicolons)
-      const optIdx = consumeToken(tokenSet, idx, tk.SEMICOLON);
-      if (!optIdx) break;
-      idx = optIdx;
-      expectingStatementDelimiter=false;
+  try {
+    for(;;) {
+      for(;;) { // ignore empty statements (between consecutive semicolons)
+        const optIdx = consumeToken(tokenSet, idx, tk.SEMICOLON);
+        if (!optIdx) break;
+        idx = optIdx;
+        expectingStatementDelimiter=false;
+      }
+      if(tokenSet.length <= idx) break; // EOF
+      if(expectingStatementDelimiter) throw new Error();
+      const [,stmt] = [idx] = parseCreateStatement(tokenSet, idx);
+      statements.push(stmt);
+      logger.log(stmt,idx);
+      const u = require('util');
+      console.log(u.inspect(stmt, {depth:null}));
     }
-    if(tokenSet.length <= idx) break; // EOF
-    if(expectingStatementDelimiter) throw new Error();
-    const stmt = parseCreateStatement(tokenSet, idx);
-    statements.push(stmt);
+  } catch (err) {
+    logger.log(tokenSet, idx);
+    logger.log(err);
+    return err;
   }
+  return statements;
 };
-const parseCreateStatement = (tokenSet: TokenSet, start: number): CreateTableStatement => {
+const parseCreateStatement = (tokenSet: TokenSet, start: number): ParseResult<CreateTableStatement> => {
   // let i = nextMeaningfulToken(tokenSet, start); // TODO next?
-  let [idx,found] = parseKeyword(tokenSet, start, 'CREATE');
+  let idx=start;
+  let [,found] = [idx] = parseKeyword(tokenSet, idx, 'CREATE');
   if(!found) {
+    let token;
+    [idx,token] =nextMeaningfulToken(tokenSet, idx);
+    logger.log(idx, token);
+    [idx,token] =nextMeaningfulToken(tokenSet, idx);
+    logger.log(idx, token);
     throw getError('a create statement', peekToken(tokenSet, idx));
   }
   [idx, found] = parseKeywords(tokenSet, idx, ['OR', 'REPLACE']);
   const orReplace = found;
+  [idx, found] = parseKeyword(tokenSet, idx, 'TABLE');
+  if (!found) throw getError('TABLE after CREATE', peekToken(tokenSet, idx)); // only support TABLE
   return parseCreateTableStatement(tokenSet, idx, orReplace);
 };
-const parseCreateTableStatement = (tokenSet: TokenSet, start: number, orReplace: boolean): CreateTableStatement => {
-  let idx;
-  const [,ifNotExists] = [idx] = parseKeywords(tokenSet, start, ['IF','NOT','EXISTS']);
+const parseCreateTableStatement = (tokenSet: TokenSet, start: number, orReplace: boolean): ParseResult<CreateTableStatement> => {
+  let idx=start;
+  const [,ifNotExists] = [idx] = parseKeywords(tokenSet, idx, ['IF','NOT','EXISTS']);
+  logger.log(132,idx);
   const [,tableName] = [idx] = parseObjectName(tokenSet, idx);
+  logger.log(134,idx);
   const [,[columns,constraints]] = [idx] = parseColumns(tokenSet, idx);
   const [,withoutRowid] = [idx] = parseKeywords(tokenSet, idx, ['WITHOUT','ROWID']); // sqlite diarect
   const [,withOptionsFound] = [idx] = parseKeyword(tokenSet, idx, 'WITH');
@@ -132,7 +153,7 @@ const parseCreateTableStatement = (tokenSet: TokenSet, start: number, orReplace:
   }
   const [,asFound] = [idx] = parseKeyword(tokenSet, idx, 'AS');
   if (asFound) throw unsupportedExprssion(peekToken(tokenSet, idx));
-  return new CreateTableStatement(
+  return [idx, new CreateTableStatement(
     tableName,
     columns,
     constraints,
@@ -141,36 +162,40 @@ const parseCreateTableStatement = (tokenSet: TokenSet, start: number, orReplace:
     ifNotExists,
     withoutRowid,
     false,
-    undefined,
-    undefined,
-    undefined,
-  );
+  )];
 };
 type ColumnsAndConstraints = [ColumnDef[], TableConstraint[]];
 const parseColumns = (tokenSet: TokenSet, start: number): ParseResult<ColumnsAndConstraints> => {
+  let idx:number=start;
   const columns: ColumnDef[] = [];
   const constraints: TableConstraint[] = [];
   let optIdx: number|undefined = start;
-  if (!(consumeToken(tokenSet, optIdx, tk.LPAREN)) || (optIdx = consumeToken(tokenSet, optIdx, tk.RPAREN)) ) { // TODO ??
-    return [optIdx, [columns, constraints]];
-  }
-  let idx:number;
+  optIdx = consumeToken(tokenSet, optIdx, tk.LPAREN);
+  if (!optIdx) return [idx, [columns, constraints]]; // no starting parenthesis
+  idx=optIdx;
+  optIdx = consumeToken(tokenSet, optIdx, tk.RPAREN);
+  if (optIdx) return [optIdx, [columns, constraints]]; // empty body
+  logger.log(168, optIdx, start);
   let optIdxRParen:number|undefined;
   do {
-    const [,optConstraints] = [idx] = parseOptionalTableConstraint(tokenSet, start);
+    logger.log(1);
+    const [,optConstraints] = [idx] = parseOptionalTableConstraint(tokenSet, idx);
+    logger.log(2);
     if (optConstraints) constraints.push(optConstraints);
     const token = peekToken(tokenSet, idx);
     if (token instanceof tk.WordIdent) {
       const [,columnDef] = [idx] = parseColumnDef(tokenSet, idx);
       columns.push(columnDef);
     } else {
+      logger.log(tokenSet, idx);
       throw getError('column name or constraint definition', token);
     }
     const optIdxComma = consumeToken(tokenSet, idx, tk.COMMA); // allow a trailing comma, even though it's not in standard
     optIdxRParen = consumeToken(tokenSet, optIdxComma || idx, tk.RPAREN);
+    logger.log(190, optIdxComma, optIdxRParen, idx);
     if (!optIdxComma && !optIdxRParen) throw getError(`',' or ')' after column definition`, token);
     idx = optIdxRParen||optIdxComma||idx;
-  } while(optIdxRParen);
+  } while(!optIdxRParen);
   return [idx, [columns, constraints]];
 };
 const parseColumnDef = (tokenSet: TokenSet, start: number): ParseResult<ColumnDef> => {
@@ -259,9 +284,9 @@ const parseReferencialAction = (tokenSet: TokenSet, start: number): ParseResult<
   throw getError('one of RESTRICT, CASCADE, SET NULL, NO ACTION or SET DEFAULT', peekToken(tokenSet, idx));
 };
 const parseOptionalTableConstraint = (tokenSet: TokenSet, start: number): ParseResult<TableConstraint|undefined> => {
-  let idx;
-  const [,found] = [idx] = parseKeyword(tokenSet, start, 'CONSTRAINT');
-  if (!found) return [start, undefined];
+  let idx=start;
+  const [,found] = [idx] = parseKeyword(tokenSet, idx, 'CONSTRAINT');
+  if (!found) return [idx, undefined];
   const [,name] = [idx] = parseIdentifier(tokenSet, idx);
   const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof Token){
@@ -338,10 +363,10 @@ const getNextPrecedence = (tokenSet: TokenSet, start: number): Precedence => {
   return PRECEDENCE.DEFAULT_0;
 };
 const parsePrefix = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
-  let idx: number;
-  const [,dataType] = [idx] = tryParseDataType(tokenSet, start);
+  let idx=start;
+  const [,dataType] = [idx] = tryParseDataType(tokenSet, idx);
   if (dataType instanceof DataType) {
-    const [,value] = [idx] = expectLiteralString(tokenSet, start);
+    const [,value] = [idx] = expectLiteralString(tokenSet, idx);
     return [idx, new exprs.TypedString(dataType, value)];
   }
   const prevIdx = idx;
@@ -464,53 +489,57 @@ const parseCase = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
   return [idx, new exprs.Case(operand, conditions, results, elseResult)];
 };
 const expectValue = (tokenSet: TokenSet, start: number): ParseResult<Value<boolean|string|undefined>> => {
-    const [idx, token] = nextMeaningfulToken(tokenSet, start);
-    if (token instanceof tk.Word) {
-      if (keywords.isOneOfKeywords(token.value, ['TRUE','FALSE'])) return [idx, new values.Boolean(token.value)];
-      else if (keywords.isKeyword(token.value, 'NULL')) return [idx, new values.Null];
-      throw getError('a concrete value', token);
-    }
-    if (token instanceof tk.Number) {
-      return [idx, new values.Number(token.value)]; // TODO should validate?
-    } else if (token instanceof tk.SingleQuotedString) {
-      return [idx, new values.SingleQuotedString(token.content)];
-    } else if (token instanceof tk.NationalStringLiteral) {
-      return [idx, new values.NationalStringLiteral(token.content, token.prefix)];
-    } else if (token instanceof tk.HexStringLiteral) {
-      return [idx, new values.HexStringLiteral(token.content, token.prefix)];
-    }
-    throw getError('a value', token);
+  let idx=start;
+  const [,token] = [idx] =nextMeaningfulToken(tokenSet, idx);
+  if (token instanceof tk.Word) {
+    if (keywords.isOneOfKeywords(token.value, ['TRUE','FALSE'])) return [idx, new values.Boolean(token.value)];
+    else if (keywords.isKeyword(token.value, 'NULL')) return [idx, new values.Null];
+    throw getError('a concrete value', token);
+  }
+  if (token instanceof tk.Number) {
+    return [idx, new values.Number(token.value)]; // TODO should validate?
+  } else if (token instanceof tk.SingleQuotedString) {
+    return [idx, new values.SingleQuotedString(token.content)];
+  } else if (token instanceof tk.NationalStringLiteral) {
+    return [idx, new values.NationalStringLiteral(token.content, token.prefix)];
+  } else if (token instanceof tk.HexStringLiteral) {
+    return [idx, new values.HexStringLiteral(token.content, token.prefix)];
+  }
+  throw getError('a value', token);
 };
 const expectLiteralString = (tokenSet: TokenSet, start: number): ParseResult<string> => {
-  const [idx, token] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] =nextMeaningfulToken(tokenSet, idx);
   if (token instanceof tk.SingleQuotedString) return [idx, token.content];
   throw getError('literal string', token);
 };
 const tryParseDataType = (tokenSet: TokenSet, start: number): ParseResult<undefined|DataType> => {
+  const idx=start;
   try {
-    return parseDataType(tokenSet, start);
+    return parseDataType(tokenSet, idx);
   } catch(err) {
-    if (err instanceof ParseError) return [start, undefined];
+    if (err instanceof ParseError) return [idx, undefined];
     throw err;
   }
 };
 const parseDataType = (tokenSet: TokenSet, start: number): ParseResult<DataType> => {
-  let idx: number;
-  const [,token] = [idx] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof tk.Word){
-    if (types.inDataTypeNameL(token.value)) {
+    const typeName = token.value.toUpperCase();
+    if (types.inDataTypeNameL(typeName)) {
       const [,length] = [idx] = parseLength(tokenSet, idx);
-      return [idx, types.mapperL[token.value](length)];
-    } else if (types.inDataTypeNameOptPS(token.value)) {
+      return [idx, types.mapperL[typeName](length)];
+    } else if (types.inDataTypeNameOptPS(typeName)) {
       const [,ps] = [idx] = parseOptionalPrecisionScale(tokenSet, idx);
-      if (ps instanceof Array) return [idx, types.mapperOptPS[token.value](...ps)];
-      else return [idx, types.mapperOptPS[token.value]()];
-    } else if (types.inDataTypeNameOptP(token.value)) {
+      if (ps instanceof Array) return [idx, types.mapperOptPS[typeName](...ps)];
+      else return [idx, types.mapperOptPS[typeName]()];
+    } else if (types.inDataTypeNameOptP(typeName)) {
       const [,p] = [idx] = parseOptionalPrecision(tokenSet, idx);
-      return [idx,types.mapperOptP[token.value](typeof p === 'number' ? p : undefined)];
+      return [idx,types.mapperOptP[typeName](typeof p === 'number' ? p : undefined)];
     } else if (equalToKeyword(token, 'DOUBLE')) {
       const [,found] = [idx] = parseKeyword(tokenSet, idx, 'PRECISION');
-      let dbl = token.value;
+      let dbl = typeName;
       if (found) dbl += ' PRECISION'; // TODO keyword
       return [idx, types.mapperNoArgs[dbl as types.DataTypeNameNoArgs]]; // TODO type assertion
     } else if (inKeywords(token, ['TIME', 'TIMESTAMP'])) {
@@ -519,46 +548,50 @@ const parseDataType = (tokenSet: TokenSet, start: number): ParseResult<DataType>
         return found;
       });
       if (withOrWithout) idx = expectKeywords(tokenSet, idx, ['TIME', 'ZONE']);
-      return [idx,types.mapperNoArgs[token.value as types.DataTypeNameNoArgs]]; // TODO type assertion
-    } else if (types.inDataTypeNameNoArgs(token.value)) {
-      return [idx,types.mapperNoArgs[token.value]];
+      return [idx,types.mapperNoArgs[typeName as types.DataTypeNameNoArgs]]; // TODO type assertion
+    } else if (types.inDataTypeNameNoArgs(typeName)) {
+      return [idx,types.mapperNoArgs[typeName]];
     }
   }
   throw getError('a data type name', token);
 };
 const parseLength = (tokenSet: TokenSet, start: number): ParseResult<number> => {
-  let idx = expectToken(tokenSet, start, tk.LPAREN);
+  let idx=start;
+  idx = expectToken(tokenSet, idx, tk.LPAREN);
   const [,length] = [idx] = parseLiteralUint(tokenSet, idx);
   return [expectToken(tokenSet, idx, tk.RPAREN), length];
 };
 const parseOptionalPrecisionScale = (tokenSet: TokenSet, start: number): ParseResult<undefined|[number,number]> => {
-  const optIdx = consumeToken(tokenSet, start, tk.LPAREN);
+  const idx=start;
+  const optIdx = consumeToken(tokenSet, idx, tk.LPAREN);
   if (optIdx) {
     let idx;
     const [,precision] = [idx] = parseLiteralUint(tokenSet, optIdx);
     idx = expectToken(tokenSet, idx, tk.COMMA);
     const [,scale] = [idx] = parseLiteralUint(tokenSet, idx);
-    return [idx, [precision, scale]];
+    return [expectToken(tokenSet, idx, tk.RPAREN), [precision, scale]];
   }
-  return [start, undefined];
+  return [idx, undefined];
 };
 const parseOptionalPrecision = (tokenSet: TokenSet, start: number): ParseResult<undefined|number> => {
-  const optIdx = consumeToken(tokenSet, start, tk.LPAREN);
+  const idx=start;
+  const optIdx = consumeToken(tokenSet, idx, tk.LPAREN);
   if (optIdx) {
     const [idx,precision] = parseLiteralUint(tokenSet, optIdx);
     return [expectToken(tokenSet, idx, tk.RPAREN), precision];
   }
-  return [start, undefined];
+  return [idx, undefined];
 };
 const parseLiteralUint = (tokenSet: TokenSet, start: number): [number,number] => {
-  const [idx, token] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof tk.Number) return [idx, parseInt(token.value)];
   throw getError('literal int', token);
 };
 
 const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: Precedence): ParseResult<Expr> => {
-  let idx;
-  const [,token] = [idx] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof Eof) throw new ParseError('unexpected EOF while parsing infix');  // Can only happen if `getNextPrecedence` got out of sync with this function
   if (token instanceof tk.Operator /* TODO precise condition  */ || inKeywords(token, ['AND','OR','LIKE'])) {
     const [,right] = [idx] = parseExpr(tokenSet, idx);
@@ -585,14 +618,15 @@ const parseInfix = (tokenSet: TokenSet, start: number, expr: Expr, precedence: P
   throw new ParseError('No infix parser for token '+token.value); // Can only happen if `getNextPrecedence` got out of sync with this function
 };
 const parseBetween = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): ParseResult<exprs.Between> => {
-  let idx;
-  const [,low] = [idx] = parseExpr(tokenSet, start, PRECEDENCE.BETWEEN_20);
+  let idx=start;
+  const [,low] = [idx] = parseExpr(tokenSet, idx, PRECEDENCE.BETWEEN_20);
   idx = expectKeyword(tokenSet, idx, 'AND');
   const [,high] = [idx] = parseExpr(tokenSet, idx, PRECEDENCE.BETWEEN_20);
   return [idx, new exprs.Between(expr, negated, low, high)];
 };
 const parseIn = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean): ParseResult<exprs.InList> => {
-  let idx = expectToken(tokenSet, start, tk.LPAREN);
+  let idx=start;
+  idx = expectToken(tokenSet, idx, tk.LPAREN);
   const [,found] = [idx] = parseKeywords(tokenSet, idx, ['SELECT','WITH']);
   if (found) { // subquery is not supported
     throw getError('columns (subquery is not supported)', peekToken(tokenSet, idx));
@@ -601,14 +635,15 @@ const parseIn = (tokenSet: TokenSet, start: number, expr: Expr, negated: boolean
   return [expectToken(tokenSet, idx, tk.RPAREN), new exprs.InList(expr, exs, negated)];
 };
 const parseParenthesizedColumnList = (tokenSet: TokenSet, start: number, isOptional: boolean): ParseResult<Ident[]> => {
-  const optIdx = consumeToken(tokenSet, start, tk.LPAREN);
+  const idx=start;
+  const optIdx = consumeToken(tokenSet, idx, tk.LPAREN);
   if (optIdx) {
     const [idx, idents] = parseCommaSeparated(tokenSet, optIdx, parseIdentifier);
     return [expectToken(tokenSet, idx, tk.RPAREN), idents];
   } else if (isOptional) {
-    return [start, []];
+    return [idx, []];
   } else {
-    throw getError('a list of columns in parentheses', peekToken(tokenSet, start));
+    throw getError('a list of columns in parentheses', peekToken(tokenSet, idx));
   }
 };
 function parseCommaSeparated<T>(tokenSet: TokenSet, start: number, callback: (tokenSet: TokenSet, idx: number) => [number,T]): ParseResult<T[]> {
@@ -624,23 +659,25 @@ function parseCommaSeparated<T>(tokenSet: TokenSet, start: number, callback: (to
 }
 const parseObjectName = (tokenSet: TokenSet, start: number): ParseResult<ObjectName> => {
   const idents: Ident[] = [];
-  let result;
-  let idx: number|undefined =start;
+  let idx;
+  let optIdx: number|undefined =start;
   do {
-    result = parseIdentifier(tokenSet, idx);
-    idents.push(result[1]);
-    idx = consumeToken(tokenSet, result[0], tk.COLON);
-  } while (idx);
-  return [idx||result[0], new ObjectName(idents)];
+    const [,ident] = [idx] = parseIdentifier(tokenSet, optIdx);
+    idents.push(ident);
+    optIdx = consumeToken(tokenSet, idx, tk.COLON);
+  } while (optIdx);
+  return [idx, new ObjectName(idents)];
 };
 const parseIdentifier = (tokenSet: TokenSet, start: number): ParseResult<Ident> => {
-  const [idx, token] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if(token instanceof tk.WordIdent) return [idx, toIdent(token)];
   throw getError('identifier', token);
 };
 const expectKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): number => {
-  const token = peekToken(tokenSet, start);
-  if (equalToKeyword(token, keyword)) return nextMeaningfulToken(tokenSet, start)[0];
+  const idx=start;
+  const token = peekToken(tokenSet, idx);
+  if (equalToKeyword(token, keyword)) return nextMeaningfulToken(tokenSet, idx)[0];
   throw getError(keyword, token);
 };
 const expectKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): number => {
@@ -649,24 +686,27 @@ const expectKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]):
   return idx;
 };
 const parseKeyword = (tokenSet: TokenSet, start: number, keyword: Keyword): ParseResult<boolean> => {
-  const token = peekToken(tokenSet, start);
-  return equalToKeyword(token, keyword) ? [nextMeaningfulToken(tokenSet, start)[0], true] : [start, false];
+  const idx=start;
+  const token = peekToken(tokenSet, idx);
+  return equalToKeyword(token, keyword) ? [nextMeaningfulToken(tokenSet, idx)[0], true] : [idx, false];
 };
 const parseKeywords = (tokenSet: TokenSet, start: number, keywords: Keyword[]): ParseResult<boolean> => {
   let idx=start;
   for (let j=0; idx<tokenSet.length && j<keywords.length; j++) {
     const [,found] = [idx] = parseKeyword(tokenSet, idx, keywords[j]);
-    if(!found) return [start, false];
+    if(!found) return [idx, false];
   }
   return [idx, true];
 };
 const expectToken = (tokenSet: TokenSet, start: number, expected: Token): number => {
-  const [idx, token] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if (token instanceof Token && token.value === expected.value) return idx;
   throw getError(expected.value, token);
 };
 const consumeToken = (tokenSet: TokenSet, start: number, consumedToken: Token): number|undefined => {
-  const [idx, token] = nextMeaningfulToken(tokenSet, start);
+  let idx=start;
+  const [,token] = [idx] = nextMeaningfulToken(tokenSet, idx);
   if(token instanceof Token && token.value === consumedToken.value) return idx;
 };
 type NextTokenResult = Token|Eof
@@ -678,12 +718,18 @@ const nextMeaningfulToken = (tokenSet: TokenSet, start: number): ParseResult<Nex
 const peekToken = (tokenSet: TokenSet, start: number): Token|Eof => {
   let i=start;
   while(i<tokenSet.length && tokenSet[i] instanceof tk.Whitespace) i++;
+//  logger.trace(9);
   return tokenSet.length<=i ? EOF : tokenSet[i];
 };
-const equalToKeyword = (token: Token|Eof, keyword: Keyword): boolean => token instanceof tk.Word && token.value === keyword;
+const equalToKeyword = (token: Token|Eof, keyword: Keyword): boolean => token instanceof tk.Word && token.value.toLocaleUpperCase() === keyword;
 const inKeywords = (token: Token|Eof, keywords: Keyword[]): boolean => keywords.some(keyword => equalToKeyword(token, keyword)); // TODO delete
-const getError = (expected: string, actual: Token|string|Eof): ParseError => new ParseError(`Expected: ${expected}, found: ${typeof actual === 'string' ? actual : actual.value}`);
-const unsupportedExprssion = (token: Token|Eof): ParseError => new ParseError('An unsupported expression found: ' + token.value);
+const getError = (expected: string, actual: Token|string|Eof): ParseError => {
+  return new ParseError(`Expected: ${expected}, but found: ${typeof actual === 'string' ? actual : actual.value}.`);
+};
+const unsupportedExprssion = (token: Token|Eof): ParseError => new ParseError(`An unsupported expression found: ${token.value}.`);
 const toIdent = (wordOrIdent: tk.WordIdent): Ident => // TODO exclude keyword
   wordOrIdent instanceof tk.DelimitedIdent ? new Ident(wordOrIdent.content,wordOrIdent.delimiter) : new Ident(wordOrIdent.value);
+
+export * from './parser';
+export * as parser from './parser';
 
