@@ -13,17 +13,19 @@ export const tokenUtil = {
 };
 export class Whitespace extends Token {}
 export class NewLine extends Whitespace {}
-export class Word extends Token { // keyword or (delimited) identifier
+export class WordIdent extends Whitespace {}
+export class Word extends WordIdent { // keyword or (delimited) identifier
 //  constructor(private _content: string, private _delimiter?: string) { super(_delimiter + _content + _delimiter); }
 //  get content(): string { return this._content; }
 //  get delimiter(): string|undefined { return this._delimiter; }
 }
-export class DelimitedIdent extends Token {
+export class DelimitedIdent extends WordIdent {
   constructor(private _content: string, private _delimiter: string) { super(_delimiter + _content + _delimiter); }
   get content(): string { return this._content; }
   get delimiter(): string { return this._delimiter; }
 }
-export class SingleQuotedString extends Token {
+export class StringLiteral extends Token {}
+export class SingleQuotedString extends StringLiteral {
   constructor(private _content: string) { super(`'` + _content + `'`); }
   get content(): string { return this._content; }
 }
@@ -36,7 +38,7 @@ export class Operator extends Token {}
 export class BinaryOperator extends Operator {}
 export class Other extends Token {}
 
-export class NonCharcterStringLiteral extends Token {
+export class NonCharcterStringLiteral extends StringLiteral {
   constructor(private _content: string, private _prefix: string) { super(_prefix + `'` + _content + `'`); }
   get content(): string { return this._content; }
   get prefix(): string { return this._prefix; }
@@ -84,6 +86,7 @@ export const RBRACE = new Operator('}');
 export const TILDE = new Operator('~');
 export const HASH = new Operator('#');
 export const ATSIGN = new Operator('@');
+export const PIPE = new Operator('|');
 
 const TOKENIZE_SINGLE_QUOTED_STRING_ERROR = 'Unterminated string literal';
 const TOKENIZE_DELIMITED_STRING_ERROR = (delimiter => `Expected close delimiter ${delimiter} before EOF.`)('"');
@@ -120,7 +123,7 @@ const rule: Rule = {
   '+': () => PLUS,
   '*': () => MULT,
   '%': () => MOD,
-  '|': chars => chars[1] === '|' ? CONCAT : new Other('|'),
+  '|': chars => chars[1] === '|' ? CONCAT : PIPE,
   '=': chars => chars[1] === '>' ? RARROW : EQ,
   '.': () => PERIOD,
   '!': chars => chars[1] === '=' ? NEQ : chars[1] === '!' ? DOUBLE_EXCLAMATION_MARK : EXCLAMATION_MARK,

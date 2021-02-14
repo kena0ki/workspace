@@ -1,6 +1,6 @@
 import { DataType } from '../data-types';
 import { BinaryOperator, UnaryOperator } from './operators';
-import { Ident } from '../parser';
+import { Ident, ObjectName } from '../parser';
 
 export class Expr {
   private _expr:void
@@ -79,6 +79,24 @@ export class Identifier extends Expr {
     public ident: Ident,
   ) { super(); }
 }
+export class Wildcard extends Expr {
+  constructor(
+  ) { super(); }
+}
+export class Collate extends Expr {
+  constructor(
+    public expr: Expr,
+    public collate: ObjectName,
+  ) { super(); }
+}
 export class Function extends Expr {
+}
+export class Exists extends Expr {
+}
+export class Extract extends Expr {
+}
+export class ListAgg extends Expr {
+}
+export class Subquery extends Expr {
 }
 

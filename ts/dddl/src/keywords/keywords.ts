@@ -39,9 +39,24 @@ export const KEYWORDS = [ // only contains keywords that is necessary for create
   'EXTRACT',
   'INTERVAL', // should be defined as a data type name, but we are commenting it out there since we are not supporting it now
   'LISTAGG',
+  'COLLATE',
+  'DEFAULT',
+  'ON',
+  'DELETE',
+  'UPDATE',
+  'INSERT',
+  'RESTRICT',
+  'CASCADE',
+  'SET',
+  'NO',
+  'ACTION',
+  'AUTO_INCREMENT', // mysql diarect
+  'AUTOINCREMENT',  // sqlite diarect
+  'ROWID',
   ...types.DATA_TYPE_NAMES,
 ] as const;
 export type Keyword = typeof KEYWORDS[number];
+export const concatKeywords = (keywords: Keyword[], separator: string = ' '): string => keywords.join(separator);
 export function isKeyword<T extends Keyword>(src: string, keyword: T): src is T {
   return src.toUpperCase() === keyword;
 }
