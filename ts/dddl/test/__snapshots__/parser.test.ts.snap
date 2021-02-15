@@ -1,3 +1,251 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`parse parse create statement: Create table 1`] = `[Error: Expected: a create statement, found: (]`;
+exports[`parse 001. parse create statement: Create table 1`] = `
+Array [
+  CreateTableStatement {
+    "columns": Array [
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Char {
+          "length": 10,
+          "name": "CHAR",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "id",
+        },
+        "options": Array [],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Decimal {
+          "name": "DECIMAL",
+          "precision": 10,
+          "scale": 3,
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "price",
+        },
+        "options": Array [],
+      },
+    ],
+    "constraints": Array [],
+    "external": false,
+    "fileFormat": undefined,
+    "ifNotExists": false,
+    "location": undefined,
+    "name": ObjectName {
+      "value": Array [
+        Ident {
+          "quoteStyle": "\\"",
+          "value": "ITEM",
+        },
+      ],
+    },
+    "orReplace": false,
+    "query": undefined,
+    "withOptions": Array [],
+    "withoutRowid": false,
+  },
+]
+`;
+
+exports[`parse 002. parse create statement: Create table 1`] = `
+Array [
+  CreateTableStatement {
+    "columns": Array [
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Varchar {
+          "length": 100,
+          "name": "VARCHAR",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "name",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": NotNull {},
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Double {
+          "name": "DOUBLE",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "lat",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Null {},
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Double {
+          "name": "DOUBLE",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "lng",
+        },
+        "options": Array [],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "constrained",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Null {},
+          },
+          ColumnOptionDef {
+            "name": Ident {
+              "quoteStyle": undefined,
+              "value": "pkey",
+            },
+            "option": Unique {
+              "isPrimary": true,
+            },
+          },
+          ColumnOptionDef {
+            "name": undefined,
+            "option": NotNull {},
+          },
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Unique {
+              "isPrimary": false,
+            },
+          },
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Check {
+              "expr": BinaryOp {
+                "left": Identifier {
+                  "ident": Ident {
+                    "quoteStyle": undefined,
+                    "value": "constrained",
+                  },
+                },
+                "op": BinaryOperator {
+                  "value": ">",
+                },
+                "right": Number {
+                  "value": "0",
+                },
+              },
+            },
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "ref",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Foreign {
+              "foreignTable": ObjectName {
+                "value": Array [
+                  Ident {
+                    "quoteStyle": undefined,
+                    "value": "othertable",
+                  },
+                ],
+              },
+              "onDelete": undefined,
+              "onUpdate": undefined,
+              "referredColumns": Array [
+                Ident {
+                  "quoteStyle": undefined,
+                  "value": "a",
+                },
+                Ident {
+                  "quoteStyle": undefined,
+                  "value": "b",
+                },
+              ],
+            },
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "ref2",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Foreign {
+              "foreignTable": ObjectName {
+                "value": Array [
+                  Ident {
+                    "quoteStyle": undefined,
+                    "value": "othertable2",
+                  },
+                ],
+              },
+              "onDelete": ReferencialAction {
+                "name": "CASCADE",
+              },
+              "onUpdate": ReferencialAction {
+                "name": "NO ACTION",
+              },
+              "referredColumns": Array [],
+            },
+          },
+        ],
+      },
+    ],
+    "constraints": Array [],
+    "external": false,
+    "fileFormat": undefined,
+    "ifNotExists": false,
+    "location": undefined,
+    "name": ObjectName {
+      "value": Array [
+        Ident {
+          "quoteStyle": undefined,
+          "value": "newyork",
+        },
+        Ident {
+          "quoteStyle": undefined,
+          "value": "cities",
+        },
+      ],
+    },
+    "orReplace": false,
+    "query": undefined,
+    "withOptions": Array [],
+    "withoutRowid": false,
+  },
+]
+`;
+
+exports[`parse 003. parse create statement: Create table 1`] = `[Error: Expected: a data type name, but found: c1. (row: 3, column: 12)]`;

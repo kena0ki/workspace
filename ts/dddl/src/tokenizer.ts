@@ -1,4 +1,4 @@
-import { logger, wrapError } from './util';
+import { logger, util } from './util';
 import { Keyword } from './keywords';
 
 export class Token {
@@ -88,9 +88,9 @@ export const HASH = new Operator('#');
 export const ATSIGN = new Operator('@');
 export const PIPE = new Operator('|');
 
-const TOKENIZE_SINGLE_QUOTED_STRING_ERROR = 'Unterminated string literal';
+const TOKENIZE_SINGLE_QUOTED_STRING_ERROR = 'Unterminated string literal.';
 const TOKENIZE_DELIMITED_STRING_ERROR = (delimiter => `Expected close delimiter ${delimiter} before EOF.`)('"');
-const TOKENIZE_MULTI_LINE_COMMENT_ERROR = 'Unexpected EOF while in a multi-line comment';
+const TOKENIZE_MULTI_LINE_COMMENT_ERROR = 'Unexpected EOF while in a multi-line comment.';
 
 
 type Rule = { [ch: string]: (chars: string[]) => Token };
@@ -118,7 +118,7 @@ const rule: Rule = {
   ')': () => RPAREN,
   ',': () => COMMA,
   // operators
-  '-': chars => chars[1] === '-' ? new Cmmnt(takeWhile(chars, 2, c => ~~(c !== '\n')  /* TODO only LF? */ )) : MINUS,
+  '-': chars => chars[1] === '-' ? new Cmmnt(takeWhile(chars, 2, c => ~~(c !== '\n'))) : MINUS,
   '/': chars => chars[1] === '*' ? new Cmmnt(takeWhileOrError(chars, 4, (c,i,chars) => ~~!(chars[i-2] === '*' && chars[i-1] === '/'), TOKENIZE_MULTI_LINE_COMMENT_ERROR)) : DIV,
   '+': () => PLUS,
   '*': () => MULT,
@@ -143,9 +143,14 @@ const rule: Rule = {
   '@':  () => ATSIGN, // TODO dead code? this char is in isIdentifierStart
 };
 
+class InnerError extends Error {
+  public readonly innerError = 'nominal typing';
+  constructor(_message:string) { super(_message); }
+}
 class TokenizeError extends Error {
-  constructor(msg: string, public row: number, public col: number){
-    super(msg);
+  constructor(public readonly cause: InnerError, public readonly row: number, public readonly  col: number){
+    super(`Tokenize error at row: ${row}, column: ${col}. ${cause.message}`);
+    this.stack = cause.stack;
   }
 }
 
@@ -161,12 +166,28 @@ export class TokenSet extends Array<Token> {
   }
   joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
+export const getTokenLocation = (tokenSet: TokenSet, idx: number): [row:number,column:number] => {
+  const loopEnd=util.min(tokenSet.length, idx+1);
+  let row=1, col=1;
+  for(let i=0; i<loopEnd; i++) {
+    const token = tokenSet[i];
+    if (token instanceof Cmmnt) {
+      const newLines = token.value.split(`\n`).length - 1;
+      row += newLines;
+      col = newLines > 0 ? 1 : col;
+    } else if (token instanceof NewLine) {
+      row++;
+      col=1;
+    } else {
+      col += token.length;
+    }
+  }
+  return [row,col];
+};
 
 export const tokenize = (src: string): TokenSet => {
   const chars = Array.from(src);
-  const tokens: TokenSet = new TokenSet();
-  let row = 1;
-  let col = 1;
+  const tokenSet: TokenSet = new TokenSet();
   let i=0;
   while(i < chars.length) {
     const c = chars[i];
@@ -180,35 +201,35 @@ export const tokenize = (src: string): TokenSet => {
       logger.log('c:', `|${c}|`);
       logger.log('token:', `*${token.value}*`);
       i += token.length;
-      tokens.push(token);
-      if (token instanceof NewLine) {
-        row++;
-        col=1;
-      } else {
-        col += token.length;
+      tokenSet.push(token);
+    } catch (err: unknown) {
+      if (err instanceof InnerError
+        // @ts-ignore: ts-node(ts-jest) incorrectly return false even if err is an instance of InnerError. so we need an extra route for it.
+        || 'innerError' in err
+      ) {
+        const [row, col] = getTokenLocation(tokenSet, tokenSet.length + 1);
+        const e = new TokenizeError(err as InnerError, row, col); // TODO undesirable type assertion due to the ts-node issue above
+        logger.log(e.stack);
+        throw e;
       }
-    } catch (err) {
-      const e = wrapError(new TokenizeError('Tokenize error', row, col), err);
-      logger.log(e.stack);
-      throw e;
+      throw err;
     }
   }
-  return tokens;
+  return tokenSet;
 };
-const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
 const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number): string => {
   let i=testStart;
   let by=0;
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
   logger.log(chars, i, chars[i]);
-  return chars.slice(0, min(i, chars.length)).join('');
+  return chars.slice(0, util.min(i, chars.length)).join('');
 };
 const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number, msg: string): string => {
   let i=testStart;
   let by=0;
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
   logger.log(chars, i, chars[i]);
-  if (i === chars.length) throw new Error(msg);
+  if (i === chars.length) throw new InnerError(msg);
   return chars.slice(0, i).join('');
 };
 const isDigit = (ch: string): boolean => '0' <= ch && ch <= '9';
