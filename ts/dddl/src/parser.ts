@@ -181,17 +181,19 @@ const parseColumns = (tokenSet: TokenSet, start: number): ParseResult<ColumnsAnd
   do {
     logger.log(182, idx);
     const [,optConstraints] = [idx] = parseOptionalTableConstraint(tokenSet, idx);
-    logger.log(184, idx);
-    if (optConstraints) constraints.push(optConstraints);
-    const token = peekToken(tokenSet, idx);
-    logger.log(187, idx);
-    if (token instanceof tk.WordIdent) {
-      const [,columnDef] = [idx] = parseColumnDef(tokenSet, idx);
-      logger.log(JSON.stringify(columnDef));
-      columns.push(columnDef);
+    if (optConstraints) {
+      constraints.push(optConstraints);
     } else {
-      logger.log(tokenSet, idx);
-      throw unexpectedToken(tokenSet, idx, 'column name or constraint definition');
+      const token = peekToken(tokenSet, idx);
+      logger.log(186, idx);
+      if (token instanceof tk.WordIdent) {
+        const [,columnDef] = [idx] = parseColumnDef(tokenSet, idx);
+        logger.log(JSON.stringify(columnDef));
+        columns.push(columnDef);
+      } else {
+        logger.log(tokenSet, idx);
+        throw unexpectedToken(tokenSet, idx, 'column name or constraint definition');
+      }
     }
     const optIdxComma = consumeToken(tokenSet, idx, tk.COMMA); // allow a trailing comma, even though it's not in standard
     optIdxRParen = consumeToken(tokenSet, optIdxComma || idx, tk.RPAREN);

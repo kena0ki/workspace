@@ -232,7 +232,7 @@ Array [
       "value": Array [
         Ident {
           "quoteStyle": undefined,
-          "value": "newyork",
+          "value": "manhattan",
         },
         Ident {
           "quoteStyle": undefined,
@@ -248,4 +248,145 @@ Array [
 ]
 `;
 
-exports[`parse 003. parse create statement: Create table 1`] = `[Error: Expected: a data type name, but found: c1. (row: 3, column: 12)]`;
+exports[`parse 003. parse create statement: Create table 1`] = `
+Array [
+  CreateTableStatement {
+    "columns": Array [
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "c1",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Check {
+              "expr": BinaryOp {
+                "left": Identifier {
+                  "ident": Ident {
+                    "quoteStyle": undefined,
+                    "value": "c1",
+                  },
+                },
+                "op": BinaryOperator {
+                  "value": ">",
+                },
+                "right": Number {
+                  "value": "10",
+                },
+              },
+            },
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "c2",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": Ident {
+              "quoteStyle": undefined,
+              "value": "c2_positive",
+            },
+            "option": Check {
+              "expr": BinaryOp {
+                "left": Identifier {
+                  "ident": Ident {
+                    "quoteStyle": undefined,
+                    "value": "c2",
+                  },
+                },
+                "op": BinaryOperator {
+                  "value": ">",
+                },
+                "right": Number {
+                  "value": "0",
+                },
+              },
+            },
+          },
+        ],
+      },
+      ColumnDef {
+        "collation": undefined,
+        "dataType": Int {
+          "name": "INT",
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "c3",
+        },
+        "options": Array [
+          ColumnOptionDef {
+            "name": undefined,
+            "option": Check {
+              "expr": BinaryOp {
+                "left": Identifier {
+                  "ident": Ident {
+                    "quoteStyle": undefined,
+                    "value": "c3",
+                  },
+                },
+                "op": BinaryOperator {
+                  "value": "<",
+                },
+                "right": Number {
+                  "value": "100",
+                },
+              },
+            },
+          },
+        ],
+      },
+    ],
+    "constraints": Array [
+      Check {
+        "expr": BinaryOp {
+          "left": Identifier {
+            "ident": Ident {
+              "quoteStyle": undefined,
+              "value": "c1",
+            },
+          },
+          "op": BinaryOperator {
+            "value": "<>",
+          },
+          "right": Number {
+            "value": "0",
+          },
+        },
+        "name": Ident {
+          "quoteStyle": undefined,
+          "value": "c1_nonzero",
+        },
+      },
+    ],
+    "external": false,
+    "fileFormat": undefined,
+    "ifNotExists": false,
+    "location": undefined,
+    "name": ObjectName {
+      "value": Array [
+        Ident {
+          "quoteStyle": undefined,
+          "value": "t1",
+        },
+      ],
+    },
+    "orReplace": false,
+    "query": undefined,
+    "withOptions": Array [],
+    "withoutRowid": false,
+  },
+]
+`;

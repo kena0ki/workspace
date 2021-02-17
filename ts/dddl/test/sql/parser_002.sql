@@ -1,4 +1,4 @@
-CREATE TABLE newyork.cities (
+CREATE TABLE manhattan.cities (
   name VARCHAR(100) NOT NULL,
   lat DOUBLE NULL,
   lng DOUBLE,

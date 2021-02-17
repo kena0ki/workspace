@@ -5,6 +5,8 @@ export const global = Function('return this')();
 export const logger = global.dddlEnableLog || process.env.DDDL_ENABLE_LOG ? console : {
   log(){},
   trace(){},
+  time(){},
+  timeEnd(){},
 };
 
 export function wrapError<T extends Error>(wrapper: T, cause: Error): T {

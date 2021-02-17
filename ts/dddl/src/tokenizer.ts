@@ -166,15 +166,15 @@ export class TokenSet extends Array<Token> {
   }
   joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
-export const getTokenLocation = (tokenSet: TokenSet, idx: number): [row:number,column:number] => {
-  const loopEnd=util.min(tokenSet.length, idx+1);
+export const getTokenLocation = (tokenSet: TokenSet, idx: number=Infinity): [row:number,column:number] => {
+  const loopEnd=util.min(tokenSet.length, idx-1);
   let row=1, col=1;
   for(let i=0; i<loopEnd; i++) {
     const token = tokenSet[i];
     if (token instanceof Cmmnt) {
-      const newLines = token.value.split(`\n`).length - 1;
-      row += newLines;
-      col = newLines > 0 ? 1 : col;
+      const lines = token.value.split(`\n`);
+      row += lines.length-1;
+      col = lines.length-1 > 0 ? 1 : col + lines[lines.length-1].length;
     } else if (token instanceof NewLine) {
       row++;
       col=1;
@@ -207,7 +207,7 @@ export const tokenize = (src: string): TokenSet => {
         // @ts-ignore: ts-node(ts-jest) incorrectly return false even if err is an instance of InnerError. so we need an extra route for it.
         || 'innerError' in err
       ) {
-        const [row, col] = getTokenLocation(tokenSet, tokenSet.length + 1);
+        const [row, col] = getTokenLocation(tokenSet);
         const e = new TokenizeError(err as InnerError, row, col); // TODO undesirable type assertion due to the ts-node issue above
         logger.log(e.stack);
         throw e;
