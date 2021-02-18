@@ -106,20 +106,9 @@ type Prefix = string|((row: number, col: number, colName: string) => string);
 
 /**
  * Generates data from a create table statement with options.
- * How data is generated depends on types and options but the general idea is simple.
- * Generator adds 1 to previous data row by row so each column would have sequentially incremented number.
- * Given that we have the following ddl,
- *    create table a (
- *      col1 char(5),
- *      col2 integer,
- *      col3 float,
- *      col1 char(8)
- *    );
- * then we get the following.
- *    L1  "a0001","1","0.1","b0000001"
- *    L2  "a0002","2","0.2","b0000002"
- *    L3  "a0003","3","0.3","b0000003"
- *    L4  "a0004","4","0.4","b0000004"
+ * How data is generated depends on types and options but the general idea is that
+ * generator adds 1 to previous data row by row so each column would have sequentially incremented number.
+ * Given that we have following ddl, then we get following data.
  */
 export const generate = (ddl: string, options: GeneratorOptions) => {
 };
