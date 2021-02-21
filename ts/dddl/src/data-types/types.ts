@@ -1,12 +1,12 @@
 // Data type definitions do not strictly follow the ANSI SQL Standards
 // We only support major data types.
-// Data type definition might not strictly follow the spec. E.g., `length` of CHAR is optional according to the spec but we enforce to define `length`.
+// E.g., `length` of CHAR is optional according to the spec but we enforce to define `length`.
 
 export const DATA_TYPE_NAMES_L = [
   'CHAR',
   'CHARACTER',
-//  'CHAR VARYING', // not supported
-//  'CHARACTER VARYING', // not supported
+//  'CHAR VARYING',
+//  'CHARACTER VARYING',
   'VARCHAR',
   'CLOB',
   'BINARY',
@@ -26,7 +26,7 @@ export const DATA_TYPE_NAMES_OPT_P = [
 ] as const;
 export type DataTypeNameOptP = typeof DATA_TYPE_NAMES_OPT_P[number];
 export const DATA_TYPE_NAMES_NO_ARGS = [
-// 'UUID', // not supported
+// 'UUID',
   'SMALLINT',
   'INT',
   'INTEGER',
@@ -38,12 +38,12 @@ export const DATA_TYPE_NAMES_NO_ARGS = [
   'DATE',
   'TIME',
   'TIMESTAMP',
-// 'INTERVAL', // not supported
-// 'REGCLASS', // not supported
-  'TEXT',
-// 'BYTEA', // not supported
-// 'CUSTOM', // not supported
-// 'ARRAY', // not supported
+// 'INTERVAL',
+// 'REGCLASS',
+// 'TEXT',
+// 'BYTEA',
+// 'CUSTOM',
+// 'ARRAY',
 ] as const;
 export type DataTypeNameNoArgs = typeof DATA_TYPE_NAMES_NO_ARGS[number];
 export const DATA_TYPE_NAMES = [
@@ -57,78 +57,94 @@ export type DataTypeName = typeof DATA_TYPE_NAMES[number];
 export class DataType {
   constructor(public name: DataTypeName) {}
 }
-export class Char extends DataType { // Fixed-length character type e.g. CHAR(10)
+export class NumericType extends DataType {
+  private _numericType = 'nominal'
+}
+export class StringType extends DataType {
+  private _stringType = 'nominal'
+}
+export class DatetimeType extends DataType {
+  private _booleanType = 'nominal'
+}
+export class BooleanType extends DataType {
+  private _datetimeType = 'nominal'
+}
+export class DecimalType extends NumericType {
+  private _decimalType = 'nominal'
+  constructor(_name: DataTypeNameOptPS, public precision?: number, public scale?: number) { super(_name); }
+}
+export class Char extends StringType { // Fixed-length character type e.g. CHAR(10)
   constructor(public length: number) { super('CHAR'); }
 }
-export class Character extends DataType { // Alias for Char
+export class Character extends StringType { // Alias for Char
   constructor(public length: number) { super('CHARACTER'); }
 }
-export class Varchar extends DataType { // Variable-length character type e.g. VARCHAR(10)
+export class Varchar extends StringType { // Variable-length character type e.g. VARCHAR(10)
   constructor(public length: number) { super('VARCHAR'); }
 }
-export class Clob extends DataType { // Large character object e.g. CLOB(1000)
+export class Clob extends StringType { // Large character object e.g. CLOB(1000)
   constructor(public length: number) { super('CLOB'); }
 }
-export class Binary extends DataType { // Fixed-length binary type e.g. BINARY(10)
+export class Binary extends StringType { // Fixed-length binary type e.g. BINARY(10)
   constructor(public length: number) { super('BINARY'); }
 }
-export class Varbinary extends DataType { // Variable-length binary type e.g. VARBINARY(10)
+export class Varbinary extends StringType { // Variable-length binary type e.g. VARBINARY(10)
   constructor(public length: number) { super('VARBINARY'); }
 }
-export class Blob extends DataType { // Large binary object e.g. BLOB(1000)
+export class Blob extends StringType { // Large binary object e.g. BLOB(1000)
   constructor(public length: number) { super('BLOB'); }
 }
-export class Decimal extends DataType { // Decimal type with optional precision and scale e.g. DECIMAL(10,2)
-  constructor( public precision?: number, public scale?: number) { super('DECIMAL'); }
+export class Decimal extends DecimalType { // Decimal type with optional precision and scale e.g. DECIMAL(10,2)
+  constructor(_p?: number,_s?: number) { super('DECIMAL', _p, _s); }
 }
-export class Dec extends DataType { // Alias for Decimal type
-  constructor( public precision?: number, public scale?: number) { super('DEC'); }
+export class Dec extends DecimalType { // Alias for Decimal type
+  constructor(_p?: number,_s?: number) { super('DEC', _p, _s); }
 }
-export class Number extends DataType { // Alias for Decimal type
-  constructor( public precision?: number, public scale?: number) { super('NUMBER'); }
+export class Number extends DecimalType { // Alias for Decimal type
+  constructor(_p?: number,_s?: number) { super('NUMBER', _p, _s); }
 }
-export class Numeric extends DataType { // Alias for Decimal type
-  constructor( public precision?: number, public scale?: number) { super('NUMERIC'); }
+export class Numeric extends DecimalType { // Alias for Decimal type
+  constructor(_p?: number,_s?: number) { super('NUMERIC', _p, _s); }
 }
-export class Float extends DataType { // Floating point with optional precision e.g. FLOAT(8)
+export class Float extends NumericType { // Floating point with optional precision e.g. FLOAT(8)
   constructor( public precision?: number) { super('FLOAT'); }
 }
-export class SmallInt extends DataType { // Small integer
+export class SmallInt extends NumericType { // Small integer
   constructor() { super('SMALLINT'); }
 }
-export class Int extends DataType { // Integer
+export class Int extends NumericType { // Integer
   constructor() { super('INT'); }
 }
-export class Integer extends DataType { // Integer
+export class Integer extends NumericType { // Integer
   constructor() { super('INTEGER'); }
 }
-export class BigInt extends DataType { // Big integer
+export class BigInt extends NumericType { // Big integer
   constructor() { super('BIGINT'); }
 }
-export class Real extends DataType { // Floating point e.g. REAL
+export class Real extends NumericType { // Floating point e.g. REAL
   constructor() { super('REAL'); }
 }
-export class DoublePrecision extends DataType { // Double
+export class DoublePrecision extends NumericType { // Double
   constructor() { super('DOUBLE PRECISION'); }
 }
-export class Double extends DataType { // alias for DoublePrecision
+export class Double extends NumericType { // alias for DoublePrecision
   constructor() { super('DOUBLE'); }
 }
-export class Boolean extends DataType { // Boolean
+export class Boolean extends BooleanType { // Boolean
   constructor() { super('BOOLEAN'); }
 }
-export class Date extends DataType { // Date
+export class Date extends DatetimeType { // Date
   constructor() { super('DATE'); }
 }
-export class Time extends DataType { // Time
+export class Time extends DatetimeType { // Time
   constructor() { super('TIME'); }
 }
-export class Timestamp extends DataType { // Timestamp
+export class Timestamp extends DatetimeType { // Timestamp
   constructor() { super('TIMESTAMP'); }
 }
-export class Text extends DataType { // Text
-  constructor() { super('TEXT'); }
-}
+// export class Text extends DataType { // Text
+//   constructor() { super('TEXT'); }
+// }
 
 const SMALLINT = new SmallInt;
 const INT = new Int;
@@ -141,7 +157,7 @@ const BOOLEAN = new Boolean;
 const DATE = new Date;
 const TIME = new Time;
 const TIMESTAMP = new Timestamp;
-const TEXT = new Text;
+// const TEXT = new Text;
 
 export const mapperL: { [key in DataTypeNameL]: (length: number) => DataType } = {
   'CHAR':      (length: number) => new Char(length),
@@ -174,7 +190,7 @@ export const mapperNoArgs: { [key in DataTypeNameNoArgs]: DataType } = {
   'DATE':             DATE,
   'TIME':             TIME,
   'TIMESTAMP':        TIMESTAMP,
-  'TEXT':             TEXT,
+//  'TEXT':             TEXT,
 };
 
  // narrow down string to data type names

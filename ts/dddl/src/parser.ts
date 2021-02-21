@@ -5,86 +5,86 @@ import { exprs, Expr, values, Value, ops } from './expressions';
 import { ColumnOption, columnOptions as colOpts } from './column-options';
 import { logger } from './util';
 
-interface Ast {}
-interface Statement extends Ast {}
-class CreateTableStatement implements Statement {
+export class CreateTableStatement {
   constructor(
-    public name: ObjectName, // table name
-    public columns: ColumnDef[], // optional schema
-    public constraints: TableConstraint[],
-    public withOptions: SqlOption[],
-    public orReplace: boolean,
-    public ifNotExists: boolean,
-    public withoutRowid: boolean,
-    public external: boolean,
-    public fileFormat?: FileFormat,
-    public location?: string,
-    public query?: Query,  // Not supported
+    public readonly name: ObjectName, // table name
+    public readonly columns: ColumnDef[], // optional schema
+    public readonly constraints: TableConstraint[],
+    public readonly withOptions: SqlOption[],
+    public readonly orReplace: boolean,
+    public readonly ifNotExists: boolean,
+    public readonly withoutRowid: boolean,
+    public readonly external: boolean,
+    public readonly fileFormat?: FileFormat,
+    public readonly location?: string,
+    public readonly query?: Query,  // Not supported
   ) {}
 }
 export class ObjectName {
   constructor(
-    public value: Ident[]
+    public readonly value: Ident[]
   ) {}
 }
 class ColumnDef {
   constructor(
-    public name: Ident,
-    public dataType: DataType,
-    public collation: ObjectName|undefined,
-    public options: ColumnOptionDef[],
+    public readonly name: Ident,
+    public readonly dataType: DataType,
+    public readonly collation: ObjectName|undefined,
+    public readonly options: ColumnOptionDef[],
   ) {}
 }
 class ColumnOptionDef {
   constructor(
-    public name: Ident|undefined,
-    public option: ColumnOption,
+    public readonly name: Ident|undefined,
+    public readonly option: ColumnOption,
   ) {}
 }
-interface TableConstraint {}
-class Unique implements TableConstraint {
+export class TableConstraint {
+  private _tableConstraint='nominal'
+}
+export class Unique extends TableConstraint {
   constructor(
-    public name: Ident|undefined,
-    public columns: Ident[],
-    public isPrimary: boolean, // Whether this is a `PRIMARY KEY` or just a `UNIQUE` constraint
-  ) {}
+    public readonly name: Ident|undefined,
+    public readonly columns: Ident[],
+    public readonly isPrimary: boolean, // Whether this is a `PRIMARY KEY` or just a `UNIQUE` constraint
+  ) { super(); }
 }
 // A referential integrity constraint (`[ CONSTRAINT <name> ] FOREIGN KEY (<columns>)
 // REFERENCES <foreign_table> (<referred_columns>)`)
-class ForeignKey implements TableConstraint {
+export class ForeignKey extends TableConstraint {
   constructor(
-    public name: Ident|undefined,
-    public columns: Ident[],
-    public foreignTable: ObjectName,
-    public referredColumns: Ident[],
-  ) {}
+    public readonly name: Ident|undefined,
+    public readonly columns: Ident[],
+    public readonly foreignTable: ObjectName,
+    public readonly referredColumns: Ident[],
+  ) { super(); }
 }
 // `[ CONSTRAINT <name> ] CHECK (<expr>)`
-class Check implements TableConstraint {
+export class Check extends TableConstraint {
   constructor(
-    public name: Ident|undefined,
-    public expr: Expr,
-  ) {}
+    public readonly name: Ident|undefined,
+    public readonly expr: Expr,
+  ) { super(); }
 }
 class SqlOption {}
 class Query {}
 export class Ident {
   constructor(
-    public value: string,
-    public quoteStyle?: string,
+    public readonly value: string,
+    public readonly quoteStyle?: string,
   ) {}
 }
 class FileFormat {}
 type ReferencialActionName = 'RESTRICT'|'CASCADE'|'SET NULL'|'NO ACTION'|'SET DEFAULT';
 export class ReferencialAction {
-  constructor(public name: ReferencialActionName) {}
+  constructor(public readonly name: ReferencialActionName) {}
 }
 
 type ParseResult<T> = [number,T];
 
 class Eof {
   private _eof?: never;
-  public value = 'EOF';
+  public readonly value = 'EOF';
 }
 const EOF = new Eof;
 
@@ -92,9 +92,9 @@ class ParseError extends Error {
   public readonly parseError='nominal typing';
 }
 
-export const parse = (src: string): Statement[]|ParseError => {
+export const parse = (src: string): CreateTableStatement[]|ParseError => {
   const tokenSet = tk.tokenize(src);
-  const statements: Statement[] = [];
+  const statements: CreateTableStatement[] = [];
   let expectingStatementDelimiter = false;
   let idx: number = 0;
   try {
@@ -537,6 +537,7 @@ const parseDataType = (tokenSet: TokenSet, start: number): ParseResult<DataType>
     const typeName = token.value.toUpperCase();
     if (types.inDataTypeNameL(typeName)) {
       const [,length] = [idx] = parseLength(tokenSet, idx);
+      // TODO support [CHARACTER SET], [COLLATE]
       return [idx, types.mapperL[typeName](length)];
     } else if (types.inDataTypeNameOptPS(typeName)) {
       const [,ps] = [idx] = parseOptionalPrecisionScale(tokenSet, idx);
