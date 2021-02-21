@@ -12,18 +12,19 @@ export class GeneratorOption {
    *    Numeric types          -> NumericColumnOption
    *    String types           -> StringColumnOption
    *    Datetime types         -> DatetimeColumnOption
+   *    Boolean types          -> BooleanColumnOption
    *  If you want a fixed value for some columns throughout entire data,
    *  you can specify the value using FixedValue.
    */
-  columnOptions: { [columnName: string]: NumericColumnOption|StringColumnOption|DatetimeColumnOption|FixedValue } = {}
+  columnOptions: { [columnName: string]: ColumnOptionUnion|FixedValue } = {}
   /**
    *  
    */
-  columnOptionsDefault: NumericColumnOption|StringColumnOption|DatetimeColumnOption[] = []
+  columnOptionsDefault: ColumnOptionUnion[] = []
   /** A function to manipulate row data after it's generated. */
-  eachRow?: (rowCount: number, columns: string[], prev: object) => string
+  eachRow?<T extends {} = {}>(rowCount: number, columns: string[], prev: T): [columns: string[], next: T]
   /** The number of rows to be generated. */
-  rows: number = 0
+  size: number = 0
   /**
    * How to behave when invalid data is detected. Default: log.
    *   log: continue, but output log.
@@ -36,6 +37,7 @@ export class GeneratorOption {
     Object.assign(this,obj);
   }
 }
+type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
 /** CsvFormat is used for GneratorOption.outputFormat */
 export class CsvFormat {
   /** Delimiter of each column. Default: ',' */
@@ -59,9 +61,7 @@ export class NumericColumnOption {
   /** How much advance per each row. Default: 1 for integers, 0.1 for decimals */
   public readonly stepBy?: number
   /** Value of the first row. Default: 1 */
-  public readonly initialValue: number = 1
-  /** Prefix. Default: nothing */
-  public readonly prefix: Prefix = ''
+  public readonly initialValue: number|((col:number)=>number) = 1
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
   public readonly limit: number = Infinity
   /**
@@ -78,13 +78,13 @@ export class NumericColumnOption {
 }
 class IntegerColumnOption extends NumericColumnOption {
   private _integerColumnOption='nominal'
-  constructor(option: Partial<NumericColumnOption>) {
+  constructor(option?: Partial<NumericColumnOption>) {
     super({ stepBy: 1, ...option });
   }
 }
 class FloatColumnOption extends NumericColumnOption {
   private _floatColumnOption='nominal'
-  constructor(option: Partial<NumericColumnOption>) {
+  constructor(option?: Partial<NumericColumnOption>) {
     super({ stepBy: 0.1, ...option });
   }
 }
@@ -111,13 +111,13 @@ export class StringColumnOption {
 }
 class CharColumnOption extends StringColumnOption {
   private _charColumnOption='nominal'
-  constructor(option: Partial<StringColumnOption>) {
+  constructor(option?: Partial<StringColumnOption>) {
     super({ lengthIn: 'char', ...option });
   }
 }
 class BinaryColumnOption extends StringColumnOption {
   private _binaryColumnOption='nominal'
-  constructor(option: Partial<StringColumnOption>) {
+  constructor(option?: Partial<StringColumnOption>) {
     super({ lengthIn: 'byte', ...option });
   }
 }
@@ -134,7 +134,21 @@ export class DatetimeColumnOption {
    *     Timestamp type : 1 day.
    *     Time           : 1 second.
    */
-  protected stepBy?: number = 1
+  public readonly stepBy: number = 1
+  public constructor(obj?: {initialValue?: string}) {
+    if (!obj) return;
+    Object.assign(this,obj);
+  }
+}
+/** BooleanColumnOption is used for GeneratorOption.columnOptions */
+export class BooleanColumnOption {
+  private _booleanColumnOption='nominal'
+  /** Value of the first row. Default: false */
+  public readonly initialValue: boolean = false
+  /** Whether randomly generate data or not. Default: false */
+  public readonly random: boolean = false
+  /** Whether use null value or not. If table column has not-null constraint, this option is ignored. Default: false */
+  public readonly useNull: boolean = false
 }
 /** FixedValue is use for GneratorOption.columnOptions */
 export class FixedValue {
@@ -144,7 +158,6 @@ export class FixedValue {
     public readonly value: string = '',
   ) {}
 }
-type AvailableOptionUnion = IntegerColumnOption|FloatColumnOption|CharColumnOption|BinaryColumnOption|DatetimeColumnOption;
 type OnlyKeysOfType<T,O> = Extract<keyof O, {[K in keyof O]: O[K] extends T|undefined ? K : never}[keyof O]>
 type OnlyOfType<T,O> = {[K in OnlyKeysOfType<T,O>]?: O[K]};
 function isOfTypeNumber<K>(key: keyof K): key is OnlyKeysOfType<number,K> { return typeof key === 'number'; }
@@ -171,32 +184,67 @@ export class GenerateError extends Error {
  *    L3 "a0003","3","0.3","b0000003"
  *    L4 "a0004","4","0.4","b0000004"
  */
-export const generate = (statement: CreateTableStatement, options: GeneratorOption) => {
-  const columns = statement.columns;
+export async function* generate(statement: CreateTableStatement, options: GeneratorOption)
+  : AsyncGenerator<[columns: string[], error?: GenerateError], void, undefined> {
+  const columnDefs = statement.columns;
+  const constraints = statement.constraints;
   const nameToColIdx = {};
-  type OptsType = { [key:string]: AvailableOptionUnion };
-  const opts: OptsType = columns.reduce<OptsType>((prev, curr) => {
-    const colOption = options.columnOptions[curr.name.value];
-    if (curr.dataType instanceof types.NumericType) {
-      if (!(colOption instanceof NumericColumnOption)) throw new GenerateError;
-      const isFloat = curr.dataType instanceof types.Float || (curr.dataType instanceof types.DecimalType && curr.dataType.scale && curr.dataType.scale > 0);
-      prev[curr.name.value] = isFloat ? new FloatColumnOption(colOption) : new IntegerColumnOption(colOption);
-      return prev;
-    } else if (curr.dataType instanceof types.StringType) {
-      if (!(colOption instanceof StringColumnOption)) throw new GenerateError;
-      const isFloat = curr.dataType instanceof types.Float || (curr.dataType instanceof types.DecimalType && curr.dataType.scale && curr.dataType.scale > 0);
-      prev[curr.name.value] = isFloat ? new FloatColumnOption(colOption) : new IntegerColumnOption(colOption);
-      return prev;
+  let prevColumns: string[] = [];
+  type AvailableOptionUnion = IntegerColumnOption|FloatColumnOption|CharColumnOption|BinaryColumnOption|DatetimeColumnOption|BooleanColumnOption|FixedValue;
+  const opts: AvailableOptionUnion[] = columnDefs.map(def => {
+    const colOption = options.columnOptions[def.name.value];
+    let opt;
+    if (def.dataType instanceof types.NumericType) {
+      if (colOption && !(colOption instanceof NumericColumnOption)) throw new GenerateError('invalid column option');
+      const isFloat = def.dataType instanceof types.Float || (def.dataType instanceof types.DecimalType && def.dataType.scale && def.dataType.scale > 0);
+      opt = isFloat ? new FloatColumnOption(colOption) : new IntegerColumnOption(colOption);
+      prevColumns.push(''+opt.initialValue);
+    } else if (def.dataType instanceof types.StringType) {
+      if (colOption && !(colOption instanceof StringColumnOption)) throw new GenerateError('invalid column option');
+      const isChar = def.dataType instanceof types.CharacterStringType;
+      opt = isChar ? new CharColumnOption(colOption) : new BinaryColumnOption(colOption);
+      prevColumns.push(''+opt.initialValue);
+    } else if (def.dataType instanceof types.DatetimeType) {
+      if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GenerateError('invalid column option');
+      opt = colOption || new DatetimeColumnOption;
+      prevColumns.push(opt.initialValue);
+    } else if (def.dataType instanceof types.BooleanType) {
+      if (colOption && !(colOption instanceof BooleanColumnOption)) throw new GenerateError('invalid column option');
+      opt = colOption || new BooleanColumnOption;
+      prevColumns.push(''+opt.initialValue);
+    } else {
+      throw new GenerateError('invalid data type');
     }
-    return prev;
+    return opt;
   }, {});
-};
+  for(let i=0; i<options.size; i++) {
+    let work={};
+    const columns: string[] = [];
+    for(let j=0; j<opts.length; j++) {
+      const process: Process = {
+        columnName: columnDefs[j].name.value,
+        row: i,
+        col: j,
+        keysInUse: {},
+        prevColumns,
+      };
+      const opt = opts[j];
+      if (opt instanceof IntegerColumnOption) columns.push(generateInteger(process, opt));
+    }
+    prevColumns=columns;
+  }
+  yield [['1','2'],];
+}
 
 type Process = {
+  row: number
+  col: number
   columnName: string
-  row: number,
-  col: number,
+  prevColumns: string[]
   keysInUse: { [keyName: string]: string[] }
 }
-const generateInteger = (process: Process, option: IntegerColumnOption, constraint: TableConstraint) => {
-}
+const generateInteger = (process: Process, option: IntegerColumnOption): string => {
+  const prev=process.prevColumns[process.col];
+  
+  return '';
+};

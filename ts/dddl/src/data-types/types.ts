@@ -69,29 +69,35 @@ export class DatetimeType extends DataType {
 export class BooleanType extends DataType {
   private _datetimeType = 'nominal'
 }
+export class CharacterStringType extends StringType {
+  private _charcterStringType = 'nominal'
+}
+export class BinaryStringType extends StringType {
+  private _binaryStringType = 'nominal'
+}
 export class DecimalType extends NumericType {
   private _decimalType = 'nominal'
   constructor(_name: DataTypeNameOptPS, public precision?: number, public scale?: number) { super(_name); }
 }
-export class Char extends StringType { // Fixed-length character type e.g. CHAR(10)
+export class Char extends CharacterStringType { // Fixed-length character type e.g. CHAR(10)
   constructor(public length: number) { super('CHAR'); }
 }
-export class Character extends StringType { // Alias for Char
+export class Character extends CharacterStringType { // Alias for Char
   constructor(public length: number) { super('CHARACTER'); }
 }
-export class Varchar extends StringType { // Variable-length character type e.g. VARCHAR(10)
+export class Varchar extends CharacterStringType { // Variable-length character type e.g. VARCHAR(10)
   constructor(public length: number) { super('VARCHAR'); }
 }
-export class Clob extends StringType { // Large character object e.g. CLOB(1000)
+export class Clob extends CharacterStringType { // Large character object e.g. CLOB(1000)
   constructor(public length: number) { super('CLOB'); }
 }
-export class Binary extends StringType { // Fixed-length binary type e.g. BINARY(10)
+export class Binary extends BinaryStringType { // Fixed-length binary type e.g. BINARY(10)
   constructor(public length: number) { super('BINARY'); }
 }
-export class Varbinary extends StringType { // Variable-length binary type e.g. VARBINARY(10)
+export class Varbinary extends BinaryStringType { // Variable-length binary type e.g. VARBINARY(10)
   constructor(public length: number) { super('VARBINARY'); }
 }
-export class Blob extends StringType { // Large binary object e.g. BLOB(1000)
+export class Blob extends BinaryStringType { // Large binary object e.g. BLOB(1000)
   constructor(public length: number) { super('BLOB'); }
 }
 export class Decimal extends DecimalType { // Decimal type with optional precision and scale e.g. DECIMAL(10,2)
