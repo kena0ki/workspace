@@ -62,6 +62,7 @@ export class NumericType extends DataType {
 }
 export class StringType extends DataType {
   private _stringType = 'nominal'
+  constructor(_name: DataTypeNameL, public length: number) { super(_name); }
 }
 export class DatetimeType extends DataType {
   private _booleanType = 'nominal'
@@ -80,25 +81,25 @@ export class DecimalType extends NumericType {
   constructor(_name: DataTypeNameOptPS, public precision?: number, public scale?: number) { super(_name); }
 }
 export class Char extends CharacterStringType { // Fixed-length character type e.g. CHAR(10)
-  constructor(public length: number) { super('CHAR'); }
+  constructor(_length: number) { super('CHAR', _length); }
 }
 export class Character extends CharacterStringType { // Alias for Char
-  constructor(public length: number) { super('CHARACTER'); }
+  constructor(_length: number) { super('CHARACTER', _length); }
 }
 export class Varchar extends CharacterStringType { // Variable-length character type e.g. VARCHAR(10)
-  constructor(public length: number) { super('VARCHAR'); }
+  constructor(_length: number) { super('VARCHAR', _length); }
 }
 export class Clob extends CharacterStringType { // Large character object e.g. CLOB(1000)
-  constructor(public length: number) { super('CLOB'); }
+  constructor(_length: number) { super('CLOB', _length); }
 }
 export class Binary extends BinaryStringType { // Fixed-length binary type e.g. BINARY(10)
-  constructor(public length: number) { super('BINARY'); }
+  constructor(_length: number) { super('BINARY', _length); }
 }
 export class Varbinary extends BinaryStringType { // Variable-length binary type e.g. VARBINARY(10)
-  constructor(public length: number) { super('VARBINARY'); }
+  constructor(_length: number) { super('VARBINARY', _length); }
 }
 export class Blob extends BinaryStringType { // Large binary object e.g. BLOB(1000)
-  constructor(public length: number) { super('BLOB'); }
+  constructor(_length: number) { super('BLOB', _length); }
 }
 export class Decimal extends DecimalType { // Decimal type with optional precision and scale e.g. DECIMAL(10,2)
   constructor(_p?: number,_s?: number) { super('DECIMAL', _p, _s); }
