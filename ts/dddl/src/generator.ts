@@ -200,15 +200,18 @@ export class FixedValue {
   ) {}
 }
 
-type ColumnValueTypeUnion = string|number|Date|boolean;
 type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
+type KeysInUseType = { [keyName: string]: string[] };
+type NameIdx={[key:string]:number};
+type Keys={keyName: string, keys: string[]};
 type RowProcess = {
   row: number
   prevColumns: ColumnsType
-  keysInUse: { [keyName: string]: string[] }
+  keysInUse: KeysInUseType
   constraints: TableConstraint[]
-  primaryKeys: string[]
-  uniqueKeysSet: string[][]
+  primaryKeys?: Keys
+  uniqueKeysSet: Keys[]
+  nameIdx: NameIdx
 }
 type ColumnProcess = RowProcess & {
   col: number
@@ -228,7 +231,7 @@ export class GeneratorValidationError extends Error {
  * Generates data from a create table statement with options.
  * How data is generated depends on types and options but the general idea is simple.
  * Generator adds 1 to previous data row by row so each column would have sequentially incremented number.
- * Given that we have the following ddl,
+ * Given that we have the following statement,
  *    create table a (
  *      c1 char(5),
  *      c2 integer,
@@ -245,7 +248,6 @@ export class GeneratorValidationError extends Error {
 export async function* generate(statement: CreateTableStatement, option: GeneratorOption)
   : AsyncGenerator<[columns: string[], error?: GeneratorValidationError], void, undefined> {
   const columnDefs = statement.columns;
-  const nameToColIdx = {};
   let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
   let strPrefixCodePoint:number=65;
   type AvailableOptionUnion = IntegerColumnOption|DecimalColumnOption|CharColumnOption|BinaryColumnOption|DatetimeColumnOption|BooleanColumnOption|FixedValue;
@@ -299,20 +301,31 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     }
     return opt;
   });
-  const keysInUse = {};
+  let keysInUse: KeysInUseType = {};
   const errors: GeneratorValidationError[] = [];
   const tableColOpts: co.ColumnOption[][] = columnDefs.map(def => def.options.map(opt => opt.option));
   const constraints= statement.constraints;
-  const primaryKeys: string[] = (() => {
+  const nameIdx = columnDefs.reduce<NameIdx>((prev,crr,i) => {
+    const next = prev;
+    next[crr.name.value]=i;
+    return prev;
+  }, {});
+  const primaryKeys: Keys|undefined = (() => {
     for(const constraint of constraints) {
-      if (constraint instanceof parser.Unique && constraint.isPrimary) return constraint.columns.map(col => col.value);
+      if (constraint instanceof parser.Unique && constraint.isPrimary) {
+        const keys = constraint.columns.map(col => col.value);
+        return { keyName: keys.join(), keys };
+      }
     }
-    return [];
+    return undefined;
   })();
-  const uniqueKeysSet: string[][] = (() => {
-    const keysSet: string[][]=[];
+  const uniqueKeysSet: Keys[] = (() => {
+    const keysSet: Keys[]=[];
     for(const constraint of constraints) {
-      if (constraint instanceof parser.Unique && !constraint.isPrimary) keysSet.push(constraint.columns.map(col => col.value));
+      if (constraint instanceof parser.Unique && !constraint.isPrimary) {
+        const keys = constraint.columns.map(col => col.value);
+        keysSet.push({ keyName: keys.join(), keys });
+      }
     }
     return keysSet;
   })();
@@ -326,6 +339,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       constraints,
       primaryKeys,
       uniqueKeysSet,
+      nameIdx
     };
     for(let j=0; j<opts.length; j++) {
       const colProcess: ColumnProcess = {
@@ -369,8 +383,8 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         return fixed ? fixed : 'null';
       })();
     }
-    const error = validateRow(rowProcess, columnsStr, constraints);
-    if (error) errors.push(error);
+    const [,errs] = [keysInUse] = validateRow(rowProcess, columnsStr);
+    if (errs) errors.push(...errs);
     prevColumns=columns;
   }
   yield [['1','2'],];
@@ -421,8 +435,23 @@ const generateBoolean = (process: ColumnProcess, option: BooleanColumnOption): b
 };
 const validateFixedValue = (process: ColumnProcess, column: string|undefined, colOpts: co.ColumnOption[]): GeneratorValidationError|undefined => {
   const notNull = colOpts.some(o => o instanceof co.NotNull);
-  if (!column && (notNull || process.primaryKeys.includes(process.columnName))) return new GeneratorValidationError('Violated not-null constraint');
+  const isPK = process.primaryKeys && process.primaryKeys.keys.includes(process.columnName);
+  if (!column && (notNull || isPK)) return new GeneratorValidationError('Violated not-null constraint');
 };
-const validateRow = (process: RowProcess, columns: string[]): [process: RowProcess, error?: GeneratorValidationError] => {
-}
+const validateRow = (process: RowProcess, columns: string[]): [keysInuse: KeysInUseType, errors?: GeneratorValidationError[]] => {
+  const errors=[];
+  if (process.primaryKeys) {
+    const value = process.primaryKeys.keys.reduce((prv, crr) => prv+columns[process.nameIdx[crr]],'');
+    const keyInUse = process.keysInUse[process.primaryKeys.keyName];
+    if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
+    keyInUse.push(value);
+  }
+  process.uniqueKeysSet.forEach(uKeys => {
+    const value = uKeys.keys.reduce((prv, crr) => prv+columns[process.nameIdx[crr]],'');
+    const keyInUse = process.keysInUse[uKeys.keyName];
+    if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
+    keyInUse.push(value);
+  });
+  return [process.keysInUse, errors];
+};
 
