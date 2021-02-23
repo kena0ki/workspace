@@ -3,6 +3,10 @@ import { types } from './data-types';
 import { columnOptions as co } from './column-options';
 import { max,min } from './util';
 
+type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
+type GenColOptType = { [columnName: string]: ColumnOptionUnion|FixedValue|undefined };
+type Prefix = string|((col: number, colName: string) => string);
+
 /** Options for data to be generated. */
 export class GeneratorOption {
   /** Output format. Either csv or insert statement. */
@@ -23,7 +27,10 @@ export class GeneratorOption {
    * Fall back column option for each column types.
    */
   columnOptionsDefault: ColumnOptionDefaultType = { num: new NumericColumnOption, str: new StringColumnOption, date: new DatetimeColumnOption, bool: new BooleanColumnOption }
-  /** A function to manipulate row data after it's generated. */
+  /**
+   * A function to manipulate row data after it's generated.
+   * The column you can modify is only the column which is set FixValue option.
+   */
   eachRow?<T extends {} = {}>(columns: ColumnsType, process: RowProcess, prev: T): [columns: ColumnsType, next: T]
   /** The number of rows to be generated. */
   size: number = 0
@@ -193,17 +200,30 @@ export class FixedValue {
   ) {}
 }
 
-type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
-// type PartialColumnOptionUnion = Partial<NumericColumnOption>|Partial<StringColumnOption>|Partial<DatetimeColumnOption>|Partial<BooleanColumnOption>;
-type GenColOptType = { [columnName: string]: ColumnOptionUnion|FixedValue|undefined };
-type OnlyKeysOfType<T,O> = Extract<keyof O, {[K in keyof O]: O[K] extends T|undefined ? K : never}[keyof O]>
-type OnlyOfType<T,O> = {[K in OnlyKeysOfType<T,O>]?: O[K]};
-function isOfTypeNumber<K>(key: keyof K): key is OnlyKeysOfType<number,K> { return typeof key === 'number'; }
-function isOfTypeString<K>(key: keyof K): key is OnlyKeysOfType<string,K> { return typeof key === 'string'; }
-type Prefix = string|((col: number, colName: string) => string);
-
-export class GenerateError extends Error {
+type ColumnValueTypeUnion = string|number|Date|boolean;
+type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
+type RowProcess = {
+  row: number
+  prevColumns: ColumnsType
+  keysInUse: { [keyName: string]: string[] }
+  constraints: TableConstraint[]
+  primaryKeys: string[]
+  uniqueKeysSet: string[][]
 }
+type ColumnProcess = RowProcess & {
+  col: number
+  columnName: string
+}
+
+export class GeneratorFatalError extends Error {
+  private _generatorFatalError='nominal'
+  public errorCode: string = ''
+}
+export class GeneratorValidationError extends Error {
+  private _generatorValidationError='nominal'
+  public errorCode: string = ''
+}
+
 /**
  * Generates data from a create table statement with options.
  * How data is generated depends on types and options but the general idea is simple.
@@ -223,19 +243,19 @@ export class GenerateError extends Error {
  *    L4 "a0004","4","0.4","b0000004"
  */
 export async function* generate(statement: CreateTableStatement, option: GeneratorOption)
-  : AsyncGenerator<[columns: string[], error?: GenerateError], void, undefined> {
+  : AsyncGenerator<[columns: string[], error?: GeneratorValidationError], void, undefined> {
   const columnDefs = statement.columns;
-  const constraints = statement.constraints;
   const nameToColIdx = {};
-  let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[]};
+  let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
   let strPrefixCodePoint:number=65;
   type AvailableOptionUnion = IntegerColumnOption|DecimalColumnOption|CharColumnOption|BinaryColumnOption|DatetimeColumnOption|BooleanColumnOption|FixedValue;
   const opts: AvailableOptionUnion[] = columnDefs.map((def,i) => {
     const colOption = option.columnOptions[def.name.value];
+    if (colOption instanceof FixedValue) return colOption;
     const dataType = def.dataType;
     let opt;
     if (dataType instanceof types.NumericType) {
-      if (colOption && !(colOption instanceof NumericColumnOption)) throw new GenerateError('invalid column option');
+      if (colOption && !(colOption instanceof NumericColumnOption)) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: NumericColumnOption = colOption || option.columnOptionsDefault.num;
       const __initialValueNum = typeof nonNullOpt.initialValue === 'function' ? nonNullOpt.initialValue(i) : nonNullOpt.initialValue;
       if (dataType instanceof types.Float) {
@@ -251,7 +271,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       }
       prevColumns.num[i]=(opt.__initialValueNum-opt.stepBy);
     } else if (dataType instanceof types.StringType) {
-      if (colOption && !(colOption instanceof StringColumnOption)) throw new GenerateError('invalid column option');
+      if (colOption && !(colOption instanceof StringColumnOption)) throw new GeneratorFatalError('invalid column option');
       const isChar = dataType instanceof types.CharacterStringType;
       const nonNullOpt: StringColumnOption = colOption || option.columnOptionsDefault.str;
       const maxLength = nonNullOpt.maxLength || dataType.length;
@@ -259,35 +279,53 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       if (!__prefixStr) __prefixStr=String.fromCodePoint(strPrefixCodePoint++);
       opt = isChar ? new CharColumnOption({...colOption, maxLength, __prefixStr}) :
                      new BinaryColumnOption({...colOption, maxLength, __prefixStr});
-      const initialValue:string = __prefixStr.slice(0,maxLength-1) + '0'.repeat(max(maxLength - __prefixStr.length,1));
+      const initialValue:string = __prefixStr.slice(0,maxLength-1) + '0'.repeat(max(maxLength - __prefixStr.length, 1));
       prevColumns.str[i]=initialValue;
     } else if (dataType instanceof types.DatetimeType) {
-      if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GenerateError('invalid column option');
+      if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: DatetimeColumnOption = colOption || option.columnOptionsDefault.date;
       opt = dataType instanceof types.Date ? new DateColumnOption(nonNullOpt) :
             dataType instanceof types.Time ? new TimeColumnOption(nonNullOpt) :
                                              new TimestampColumnOption(nonNullOpt);
       prevColumns.date[i]=opt.initialValue;
     } else if (dataType instanceof types.BooleanType) {
-      if (colOption && !(colOption instanceof BooleanColumnOption)) throw new GenerateError('invalid column option');
+      if (colOption && !(colOption instanceof BooleanColumnOption)) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: BooleanColumnOption = colOption || option.columnOptionsDefault.bool;
       const useNull = def.options.some(o => o instanceof co.NotNull);
       opt = new BooleanColumnOption({ ...nonNullOpt, useNull });
       prevColumns.bool[i]=opt.initialValue;
     } else {
-      throw new GenerateError('invalid data type');
+      throw new GeneratorFatalError('invalid data type');
     }
     return opt;
   });
   const keysInUse = {};
+  const errors: GeneratorValidationError[] = [];
+  const tableColOpts: co.ColumnOption[][] = columnDefs.map(def => def.options.map(opt => opt.option));
+  const constraints= statement.constraints;
+  const primaryKeys: string[] = (() => {
+    for(const constraint of constraints) {
+      if (constraint instanceof parser.Unique && constraint.isPrimary) return constraint.columns.map(col => col.value);
+    }
+    return [];
+  })();
+  const uniqueKeysSet: string[][] = (() => {
+    const keysSet: string[][]=[];
+    for(const constraint of constraints) {
+      if (constraint instanceof parser.Unique && !constraint.isPrimary) keysSet.push(constraint.columns.map(col => col.value));
+    }
+    return keysSet;
+  })();
   for(let i=0; i<option.size; i++) {
     let work={};
-    let columns: ColumnsType = {num:[],str:[],date:[],bool:[]};
-    const columnsStr: string[] = [];
+    const columns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
     const rowProcess: RowProcess = {
-        row: i,
-        keysInUse,
-        prevColumns,
+      row: i,
+      keysInUse,
+      prevColumns,
+      constraints,
+      primaryKeys,
+      uniqueKeysSet,
     };
     for(let j=0; j<opts.length; j++) {
       const colProcess: ColumnProcess = {
@@ -300,9 +338,11 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       if (opt instanceof StringColumnOption) columns.str[j]=(generateString(colProcess, opt));
       if (opt instanceof DatetimeColumnOption) columns.date[j]=(generateDatetime(colProcess, opt));
       if (opt instanceof BooleanColumnOption) columns.bool[j]=(generateBoolean(colProcess, opt));
+      if (opt instanceof FixedValue) columns.fixed[j]=opt.value;
     }
     if (rowProcess && option.eachRow) {
-      [columns, work] = option.eachRow(columns, rowProcess, work);
+      const [editedColumns] = [,work] = option.eachRow(columns, rowProcess, work);
+      columns.fixed = editedColumns.fixed;
     }
     for(let j=0; j<opts.length; j++) {
       const colProcess: ColumnProcess = {
@@ -310,28 +350,33 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         columnName: columnDefs[j].name.value,
         col: j,
       };
-      const opt = opts[j];
-      if (opt instanceof NumericColumnOption) validateNumeric(colProcess, opt, constraints);
-      if (opt instanceof StringColumnOption) validateString(colProcess, opt, constraints);
-      if (opt instanceof DatetimeColumnOption) validateDatetime(colProcess, opt, constraints);
-      if (opt instanceof BooleanColumnOption) validateBoolean(colProcess, opt, constraints);
+      const error = validateFixedValue(colProcess, columns.fixed[j], tableColOpts[j]);
+      if (error) errors.push(error);
     }
+    const columnsStr: string[] = [];
+    for(let j=0; j<opts.length; j++) {
+      const opt = opts[j];
+      columnsStr[j] = (() => {
+        if (opt instanceof NumericColumnOption) return columns.num[j].toString();
+        if (opt instanceof StringColumnOption) return columns.str[j];
+        const date=columns.date[j];
+        if (opt instanceof DateColumnOption) return date.toISOString().slice(0,10);
+        if (opt instanceof TimeColumnOption) return `${date.getTime() / (60*60*1000) + date.getHours()}:${date.getMinutes}:${date.getSeconds}`;
+        if (opt instanceof TimestampColumnOption) return date.toISOString().slice(0,19).replace('T',' ');
+        const bool=columns.bool[j];
+        if (opt instanceof BooleanColumnOption) return bool ? bool.toString() : 'null';
+        const fixed=columns.fixed[j];
+        return fixed ? fixed : 'null';
+      })();
+    }
+    const error = validateRow(rowProcess, columnsStr, constraints);
+    if (error) errors.push(error);
     prevColumns=columns;
   }
   yield [['1','2'],];
 }
 
-type ColumnValueTypeUnion = string|number|Date|boolean;
-type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|null)[]};
-type RowProcess = {
-  row: number
-  prevColumns: ColumnsType
-  keysInUse: { [keyName: string]: string[] }
-}
-type ColumnProcess = RowProcess & {
-  col: number
-  columnName: string
-}
+// TODO negative step
 const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): number => {
   const prev=process.prevColumns.num[process.col];
   const next = prev+option.stepBy;
@@ -358,28 +403,26 @@ const generateDatetime = (process: ColumnProcess, option: DatetimeColumnOption):
     return new Date(prev.getTime()+(option.stepBy*24*60*60*1000)); // advance by days
   }
 };
-const generateBoolean = (process: ColumnProcess, option: BooleanColumnOption): boolean|null => {
+const generateBoolean = (process: ColumnProcess, option: BooleanColumnOption): boolean|undefined => {
   const prev=process.prevColumns.bool[process.col];
   if (option.random) {
     if (option.useNull) return !!Math.floor(Math.random()*2);
     const random = Math.floor(Math.random()*3);
     return random === 0 ? false :
            random === 1 ? true :
-                          null;
+                          undefined;
   }
   if (option.useNull) {
     return prev === null  ? false :
            prev === false ? true :
-                            null;
+                            undefined;
   }
   return !prev;
 };
-const validateNumeric = (process: ColumnProcess, option: NumericColumnOption, constraints: TableConstraint[]): void => {
+const validateFixedValue = (process: ColumnProcess, column: string|undefined, colOpts: co.ColumnOption[]): GeneratorValidationError|undefined => {
+  const notNull = colOpts.some(o => o instanceof co.NotNull);
+  if (!column && (notNull || process.primaryKeys.includes(process.columnName))) return new GeneratorValidationError('Violated not-null constraint');
 };
-const validateString = (process: ColumnProcess, option: StringColumnOption, constraints: TableConstraint[]): void => {
-};
-const validateDatetime = (process: ColumnProcess, option: DatetimeColumnOption, constraints: TableConstraint[]): void => {
-};
-const validateBoolean = (process: ColumnProcess, option: BooleanColumnOption, constraints: TableConstraint[]): void => {
-};
+const validateRow = (process: RowProcess, columns: string[]): [process: RowProcess, error?: GeneratorValidationError] => {
+}
 
