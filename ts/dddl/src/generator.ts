@@ -226,6 +226,7 @@ export class GeneratorValidationError extends Error {
   private _generatorValidationError='nominal'
   public errorCode: string = ''
 }
+export type GeneratorResult = [result: { columns: (string|undefined)[], row: string }, errors?: GeneratorValidationError[]];
 
 /**
  * Generates data from a create table statement with options.
@@ -245,8 +246,7 @@ export class GeneratorValidationError extends Error {
  *    L3 "a0003","3","0.3","b0000003"
  *    L4 "a0004","4","0.4","b0000004"
  */
-export async function* generate(statement: CreateTableStatement, option: GeneratorOption)
-  : AsyncGenerator<[columns: string[], error?: GeneratorValidationError], void, undefined> {
+export async function* generate(statement: CreateTableStatement, option: GeneratorOption): AsyncGenerator<GeneratorResult, void, undefined> {
   const columnDefs = statement.columns;
   let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
   let strPrefixCodePoint:number=65;
@@ -329,6 +329,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     }
     return keysSet;
   })();
+  const tableName = statement.name.value.map(ident=>ident.value).join('.');
   for(let i=0; i<option.size; i++) {
     let work={};
     const columns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
@@ -367,7 +368,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       const error = validateFixedValue(colProcess, columns.fixed[j], tableColOpts[j]);
       if (error) errors.push(error);
     }
-    const columnsStr: string[] = [];
+    const columnsStr: (string|undefined)[] = [];
     for(let j=0; j<opts.length; j++) {
       const opt = opts[j];
       columnsStr[j] = (() => {
@@ -378,16 +379,17 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         if (opt instanceof TimeColumnOption) return `${date.getTime() / (60*60*1000) + date.getHours()}:${date.getMinutes}:${date.getSeconds}`;
         if (opt instanceof TimestampColumnOption) return date.toISOString().slice(0,19).replace('T',' ');
         const bool=columns.bool[j];
-        if (opt instanceof BooleanColumnOption) return bool ? bool.toString() : 'null';
+        if (opt instanceof BooleanColumnOption) return bool === undefined ? bool : bool.toString();
         const fixed=columns.fixed[j];
         return fixed ? fixed : 'null';
       })();
     }
     const [,errs] = [keysInUse] = validateRow(rowProcess, columnsStr);
     if (errs) errors.push(...errs);
+    const row = option.outputFormat instanceof CsvFormat ? toCsv(columnsStr, option.outputFormat) : toInsert(columnsStr, tableName);
     prevColumns=columns;
+    yield [{ columns: columnsStr, row }, errors];
   }
-  yield [['1','2'],];
 }
 
 // TODO negative step
@@ -438,20 +440,36 @@ const validateFixedValue = (process: ColumnProcess, column: string|undefined, co
   const isPK = process.primaryKeys && process.primaryKeys.keys.includes(process.columnName);
   if (!column && (notNull || isPK)) return new GeneratorValidationError('Violated not-null constraint');
 };
-const validateRow = (process: RowProcess, columns: string[]): [keysInuse: KeysInUseType, errors?: GeneratorValidationError[]] => {
+const validateRow = (process: RowProcess, columns: (string|undefined)[]): [keysInuse: KeysInUseType, errors?: GeneratorValidationError[]] => {
   const errors=[];
   if (process.primaryKeys) {
-    const value = process.primaryKeys.keys.reduce((prv, crr) => prv+columns[process.nameIdx[crr]],'');
+    const value = process.primaryKeys.keys.reduce((prv, crr) => prv+(columns[process.nameIdx[crr]]||''), '');
     const keyInUse = process.keysInUse[process.primaryKeys.keyName];
     if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
     keyInUse.push(value);
   }
   process.uniqueKeysSet.forEach(uKeys => {
-    const value = uKeys.keys.reduce((prv, crr) => prv+columns[process.nameIdx[crr]],'');
+    const value = uKeys.keys.reduce((prv, crr) => prv+(columns[process.nameIdx[crr]]||''), '');
     const keyInUse = process.keysInUse[uKeys.keyName];
     if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
     keyInUse.push(value);
   });
   return [process.keysInUse, errors];
+};
+const toCsv = (columns: (string|undefined)[], option: CsvFormat): string => {
+  const replaced = new RegExp(option.quote, 'g');
+  return columns.map((col) => {
+    if (!col) return 'null';
+    const escaped = col.replace(replaced, option.escapeSequence+option.quote);
+    return option.quote+escaped+option.quote;
+  }).join(option.delimiter);
+};
+const toInsert = (columns: (string|undefined)[], table: string): string => {
+  const cols = columns.map((col) => {
+    if (!col) return 'null';
+    const escaped = col.replace(/'/g, `'`);
+    return `'`+escaped+`'`;
+  }).join(`,`);
+  return `insert into ${table} values (${cols});`;
 };
 
