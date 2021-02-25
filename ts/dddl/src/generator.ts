@@ -1,7 +1,7 @@
 import { CreateTableStatement, TableConstraint, parser } from './parser';
 import { types } from './data-types';
 import { columnOptions as co } from './column-options';
-import { max,min } from './util';
+import { logger,max,min,add,subtract } from './util';
 
 type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
 type GenColOptType = { [columnName: string]: ColumnOptionUnion|FixedValue|undefined };
@@ -32,15 +32,8 @@ export class GeneratorOption {
    * The column you can modify is only the column which is set FixValue option.
    */
   eachRow?<T extends {} = {}>(columns: ColumnsType, process: RowProcess, prev: T): [columns: ColumnsType, next: T]
-  /** The number of rows to be generated. */
-  size: number = 0
-  /**
-   * How to behave when invalid data is detected. Default: log.
-   *   log: continue, but output log.
-   *   abort: abort data generation.
-   *   ignore: ignore error data and going on.
-   */
-  errorAction: 'log'|'abort'|'ignore' = 'log'
+  /** The number of rows to be generated. Default: 10 */
+  size: number = 10
   public constructor(obj?: GeneratorOption) { // TODO Partial
     if (!obj) return;
     Object.assign(this,obj);
@@ -89,22 +82,27 @@ export class NumericColumnOption {
 }
 class IntegerColumnOption extends NumericColumnOption {
   private _integerColumnOption='nominal'
-  constructor(obj?: Partial<NumericColumnOption>) {
-    super({ stepBy: 1, ...obj });
+  constructor(obj?: Partial<IntegerColumnOption>) {
+    super({ ...obj, stepBy: (obj && obj.stepBy) || 1});
   }
 }
 class DecimalColumnOption extends NumericColumnOption {
   private _decimalColumnOption='nominal'
   public readonly precision:number=Infinity
   public readonly scale:number=0
-  constructor(obj?: Partial<NumericColumnOption> & { precision?:number, scale?:number }) {
-    super({ stepBy: 0.1, ...obj });
+  /** An inner property */
+  public readonly __maxScale: number = 0
+  constructor(obj?: Partial<DecimalColumnOption>) {
+    super({ ...obj, stepBy: (obj && obj.stepBy) || 0.1 });
+    const scale1 = (this.__initialValueNum.toString().split('.')[1] || '').length;
+    const scale2 = (this.stepBy.toString().split('.')[1] || '').length;
+    this.__maxScale = max(scale1,scale2);
   }
 }
 /** StringColumnOption is used for GeneratorOption.columnOptions */
 export class StringColumnOption {
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
-  public readonly maxLength: number = Infinity
+  public readonly maxLength: number = 0
   /** Which measurement unit to use, either char or byte. Default: char */
   public readonly lengthIn: 'char'|'byte' = 'char'
   /** Prefix. Default: a character in A-Z, a-z, depending on the column position */
@@ -218,15 +216,40 @@ type ColumnProcess = RowProcess & {
   columnName: string
 }
 
+/** GeneratorFatalError is thrown when data generation stops due to something unexpected, such as invalid options. */
 export class GeneratorFatalError extends Error {
   private _generatorFatalError='nominal'
   public errorCode: string = ''
 }
+/** GeneratorValidationError is returned when a generated row has invalid data. */
 export class GeneratorValidationError extends Error {
   private _generatorValidationError='nominal'
   public errorCode: string = ''
 }
-export type GeneratorResult = [result: { columns: (string|undefined)[], row: string }, errors?: GeneratorValidationError[]];
+/** GeneratorResult has result of data generation */
+export type GeneratorResult = { columns: (string|undefined)[], row: string };
+
+export async function tryParseAndGenerate(src: string, option?: GeneratorOption): Promise<string[]> {
+  const [stmts,error] = parser.parse(src);
+  if (!stmts) throw error;
+  const rows:string[]=[];
+  for (const stmt of stmts) {
+    for await (const [result, errors] of generate(stmt, option)) {
+      if (errors.length > 0) throw errors;
+      rows.push(result.row);
+    }
+  }
+  return rows;
+}
+export async function* parseAndGenerate(src: string, option?: GeneratorOption): AsyncGenerator<[GeneratorResult, GeneratorValidationError[]], void, undefined> {
+  const [stmts,error] = parser.parse(src);
+  if (!stmts) throw error;
+  for (const stmt of stmts) {
+    for await (const result of generate(stmt, option)) {
+      yield result;
+    }
+  }
+}
 
 /**
  * Generates data from a create table statement with options.
@@ -246,7 +269,8 @@ export type GeneratorResult = [result: { columns: (string|undefined)[], row: str
  *    L3 "a0003","3","0.3","b0000003"
  *    L4 "a0004","4","0.4","b0000004"
  */
-export async function* generate(statement: CreateTableStatement, option: GeneratorOption): AsyncGenerator<GeneratorResult, void, undefined> {
+export async function* generate(statement: CreateTableStatement, option: GeneratorOption = new GeneratorOption):
+  AsyncGenerator<[GeneratorResult, GeneratorValidationError[]], void, undefined> {
   const columnDefs = statement.columns;
   let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
   let strPrefixCodePoint:number=65;
@@ -264,24 +288,31 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         let limit = dataType.precision ? +('9'.repeat(dataType.precision)) : Infinity;
         limit = min(limit, nonNullOpt.limit);
         opt = new DecimalColumnOption({ precision: dataType.precision, ...nonNullOpt, __initialValueNum, limit });
+        prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt.__maxScale);
       } else if (dataType instanceof types.DecimalType) {
         let limit = dataType.precision ? +('9'.repeat(dataType.precision - (dataType.scale || 0))) : Infinity;
         limit = min(limit, nonNullOpt.limit);
+        logger.log('stepBy', nonNullOpt.stepBy);
         opt = new DecimalColumnOption({ precision: dataType.precision, scale: dataType.scale, ...nonNullOpt, __initialValueNum, limit });
+        logger.log('stepBy', opt.stepBy);
       } else {
         opt = new IntegerColumnOption(colOption);
+        prevColumns.num[i]=opt.__initialValueNum - opt.stepBy;
       }
-      prevColumns.num[i]=(opt.__initialValueNum-opt.stepBy);
+      prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt.__maxScale! );
     } else if (dataType instanceof types.StringType) {
       if (colOption && !(colOption instanceof StringColumnOption)) throw new GeneratorFatalError('invalid column option');
       const isChar = dataType instanceof types.CharacterStringType;
       const nonNullOpt: StringColumnOption = colOption || option.columnOptionsDefault.str;
-      const maxLength = nonNullOpt.maxLength || dataType.length;
+      const maxLength = nonNullOpt.maxLength || dataType.length || 10; // There is no basis for 10 but we need a concrete integer value.
+      logger.log('maxLength', dataType.length);
       let __prefixStr = typeof nonNullOpt.prefix === 'function' ? nonNullOpt.prefix(i,def.name.value) : nonNullOpt.prefix;
       if (!__prefixStr) __prefixStr=String.fromCodePoint(strPrefixCodePoint++);
       opt = isChar ? new CharColumnOption({...colOption, maxLength, __prefixStr}) :
                      new BinaryColumnOption({...colOption, maxLength, __prefixStr});
       const initialValue:string = __prefixStr.slice(0,maxLength-1) + '0'.repeat(max(maxLength - __prefixStr.length, 1));
+      logger.log('initialValue', initialValue);
+      logger.log('maxLength', maxLength);
       prevColumns.str[i]=initialValue;
     } else if (dataType instanceof types.DatetimeType) {
       if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GeneratorFatalError('invalid column option');
@@ -301,8 +332,8 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     }
     return opt;
   });
+  logger.log(opts);
   let keysInUse: KeysInUseType = {};
-  const errors: GeneratorValidationError[] = [];
   const tableColOpts: co.ColumnOption[][] = columnDefs.map(def => def.options.map(opt => opt.option));
   const constraints= statement.constraints;
   const nameIdx = columnDefs.reduce<NameIdx>((prev,crr,i) => {
@@ -331,6 +362,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
   })();
   const tableName = statement.name.value.map(ident=>ident.value).join('.');
   for(let i=0; i<option.size; i++) {
+    const errors: GeneratorValidationError[] = [];
     let work={};
     const columns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
     const rowProcess: RowProcess = {
@@ -395,7 +427,8 @@ export async function* generate(statement: CreateTableStatement, option: Generat
 // TODO negative step
 const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): number => {
   const prev=process.prevColumns.num[process.col];
-  const next = prev+option.stepBy;
+  logger.log('add', prev, option.stepBy, option.__maxScale);
+  const next = add(prev, option.stepBy, option.__maxScale);
   if (next > option.limit) { // overflow
     return option.loop === 'loop'   ? option.__initialValueNum :
            option.loop === 'negate' ? -prev:
@@ -409,7 +442,7 @@ const generateString = (process: ColumnProcess, option: StringColumnOption): str
   if (option.maxLength !== Infinity && seq > +('9'.repeat(option.maxLength))) { // overflow
     seq = option.loop === 'loop' ? 1 : seq-1;
   }
-  return option.__prefixStr + seq;
+  return option.__prefixStr + '0'.repeat(option.maxLength - option.__prefixStr.length - seq.toString().length) + seq;
 };
 const generateDatetime = (process: ColumnProcess, option: DatetimeColumnOption): Date => {
   const prev=process.prevColumns.date[process.col];
@@ -441,7 +474,7 @@ const validateFixedValue = (process: ColumnProcess, column: string|undefined, co
   if (!column && (notNull || isPK)) return new GeneratorValidationError('Violated not-null constraint');
 };
 const validateRow = (process: RowProcess, columns: (string|undefined)[]): [keysInuse: KeysInUseType, errors?: GeneratorValidationError[]] => {
-  const errors=[];
+  const errors:GeneratorValidationError[]=[];
   if (process.primaryKeys) {
     const value = process.primaryKeys.keys.reduce((prv, crr) => prv+(columns[process.nameIdx[crr]]||''), '');
     const keyInUse = process.keysInUse[process.primaryKeys.keyName];

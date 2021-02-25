@@ -92,7 +92,7 @@ class ParseError extends Error {
   public readonly parseError='nominal typing';
 }
 
-export const parse = (src: string): CreateTableStatement[]|ParseError => {
+export const parse = (src: string): [CreateTableStatement[],undefined]|[undefined,ParseError]=> {
   const tokenSet = tk.tokenize(src);
   const statements: CreateTableStatement[] = [];
   let expectingStatementDelimiter = false;
@@ -106,27 +106,26 @@ export const parse = (src: string): CreateTableStatement[]|ParseError => {
         expectingStatementDelimiter=false;
       }
       if(peekToken(tokenSet, idx) instanceof Eof) break; // EOF
-      if(expectingStatementDelimiter) throw new Error();
+      if(expectingStatementDelimiter) return [undefined, unexpectedToken(tokenSet, idx, 'end of statement')];
       const [,stmt] = [idx] = parseCreateStatement(tokenSet, idx);
       statements.push(stmt);
       logger.log(stmt,idx);
       const u = require('util');
       logger.log(u.inspect(stmt, {depth:null}));
     }
-  } catch (err) {
+  } catch (err: unknown) {
     logger.log(tokenSet, idx);
     logger.log(err);
-    return err;
+    if (err instanceof ParseError) return [undefined, err];
+    throw err;
   }
-  return statements;
+  return [statements,undefined];
 };
 const parseCreateStatement = (tokenSet: TokenSet, start: number): ParseResult<CreateTableStatement> => {
   let idx=start;
   let [,found] = [idx] = parseKeyword(tokenSet, idx, 'CREATE');
   if(!found) {
     let token;
-    [idx,token] =nextMeaningfulToken(tokenSet, idx);
-    logger.log(idx, token);
     [idx,token] =nextMeaningfulToken(tokenSet, idx);
     logger.log(idx, token);
     throw unexpectedToken(tokenSet, idx, 'a create statement');
@@ -140,9 +139,7 @@ const parseCreateStatement = (tokenSet: TokenSet, start: number): ParseResult<Cr
 const parseCreateTableStatement = (tokenSet: TokenSet, start: number, orReplace: boolean): ParseResult<CreateTableStatement> => {
   let idx=start;
   const [,ifNotExists] = [idx] = parseKeywords(tokenSet, idx, ['IF','NOT','EXISTS']);
-  logger.log(132,idx);
   const [,tableName] = [idx] = parseObjectName(tokenSet, idx);
-  logger.log(134,idx);
   const [,[columns,constraints]] = [idx] = parseColumns(tokenSet, idx);
   const [,withoutRowid] = [idx] = parseKeywords(tokenSet, idx, ['WITHOUT','ROWID']); // sqlite diarect
   const [,withOptionsFound] = [idx] = parseKeyword(tokenSet, idx, 'WITH');
@@ -176,28 +173,23 @@ const parseColumns = (tokenSet: TokenSet, start: number): ParseResult<ColumnsAnd
   idx=optIdx;
   optIdx = consumeToken(tokenSet, optIdx, tk.RPAREN);
   if (optIdx) return [optIdx, [columns, constraints]]; // empty body
-  logger.log(168, optIdx, start);
   let optIdxRParen:number|undefined;
   do {
-    logger.log(182, idx);
     const [,optConstraints] = [idx] = parseOptionalTableConstraint(tokenSet, idx);
     if (optConstraints) {
       constraints.push(optConstraints);
     } else {
       const token = peekToken(tokenSet, idx);
-      logger.log(186, idx);
       if (token instanceof tk.WordIdent) {
         const [,columnDef] = [idx] = parseColumnDef(tokenSet, idx);
         logger.log(JSON.stringify(columnDef));
         columns.push(columnDef);
       } else {
-        logger.log(tokenSet, idx);
         throw unexpectedToken(tokenSet, idx, 'column name or constraint definition');
       }
     }
     const optIdxComma = consumeToken(tokenSet, idx, tk.COMMA); // allow a trailing comma, even though it's not in standard
     optIdxRParen = consumeToken(tokenSet, optIdxComma || idx, tk.RPAREN);
-    logger.log(190, optIdxComma, optIdxRParen, idx);
     if (!optIdxComma && !optIdxRParen) throw unexpectedToken(tokenSet, idx, `',' or ')' after column definition`);
     idx = optIdxRParen||optIdxComma||idx;
   } while(!optIdxRParen);
@@ -256,7 +248,6 @@ const parseOptionalColumnOption = (tokenSet: TokenSet, start: number): ParseResu
         [idx, found] = parseKeywords(tokenSet, idx, ['ON','UPDATE']);
         if (found) [,onUpdate] = [idx] = parseReferencialAction(tokenSet, idx);
       }
-      logger.log(found);
     } while ((!onDelete || !onUpdate) && found);
     return [idx, new colOpts.Foreign(foreignTable, referredColumns, onDelete, onUpdate)];
   }
@@ -478,8 +469,8 @@ const parseCase = (tokenSet: TokenSet, start: number): ParseResult<Expr> => {
     [,operand] = [idx] = parseExpr(tokenSet, idx);
     idx = expectKeyword(tokenSet, idx, 'WHEN');
   }
-  const conditions = [];
-  const results = [];
+  const conditions: Expr[] = [];
+  const results: Expr[] = [];
   do {
     let [,expr] = [idx] = parseExpr(tokenSet, idx);
     conditions.push(expr);

@@ -20,6 +20,20 @@ export const logger = global.dddlEnableLog || process.env.DDDL_ENABLE_LOG ? cons
 export const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
 export const max = (...args: number[]): number => args.sort((a,b) => b-a)[0];
 
+const surrogatePairs = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
+export const length = (str: string): number => str.replace(surrogatePairs,' ').length;
+
+export const add = (left:number, right:number, scale:number): number => {
+  if (scale <= 0) return left+right;
+  const coefficient=10**scale;
+  return ((left*coefficient)+(right*coefficient))/coefficient;
+};
+export const subtract = (left:number, right:number, scale:number): number => {
+  if (scale <= 0) return left-right;
+  const coefficient=10**scale;
+  return ((left*coefficient)-(right*coefficient))/coefficient;
+};
+
 export * from './util';
 export * as util from './util';
 

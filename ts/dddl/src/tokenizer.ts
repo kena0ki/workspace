@@ -198,8 +198,8 @@ export const tokenize = (src: string): TokenSet => {
                 c;
     try {
       const token = rule[key]?.(chars.slice(i)) || new Other(key);
-      logger.log('c:', `|${c}|`);
-      logger.log('token:', `*${token.value}*`);
+      // logger.log('c:', `|${c}|`);
+      // logger.log('token:', `*${token.value}*`);
       i += token.length;
       tokenSet.push(token);
     } catch (err: unknown) {
@@ -215,20 +215,19 @@ export const tokenize = (src: string): TokenSet => {
       throw err;
     }
   }
+  logger.log(tokenSet);
   return tokenSet;
 };
 const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number): string => {
   let i=testStart;
   let by=0;
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
-  logger.log(chars, i, chars[i]);
   return chars.slice(0, util.min(i, chars.length)).join('');
 };
 const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number, msg: string): string => {
   let i=testStart;
   let by=0;
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
-  logger.log(chars, i, chars[i]);
   if (i === chars.length) throw new InnerError(msg);
   return chars.slice(0, i).join('');
 };
