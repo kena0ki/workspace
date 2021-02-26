@@ -6,7 +6,7 @@ import * as path from 'path';
 
 describe('parse', () => {
   test(`001. parse and generate`, async () => {
-    const file = path.join(__dirname, `sql/parser_001.sql`);
+    const file = path.join(__dirname, `sql/generator_001.sql`);
     const sql = await fs.readFile(file, 'utf8');
     console.time();
     let rows;

@@ -48,6 +48,8 @@ export class CsvFormat {
   public readonly quote: string = `"`
   /** Escape sequence. Default: '"' */
   public readonly escapeSequence: string = `"`
+  /** Whether output header or not. Default: false */
+  public readonly header: boolean = false
   /** Define options */
   public constructor(obj?: Partial<CsvFormat>) {
     if (!obj) return;
@@ -93,7 +95,7 @@ class DecimalColumnOption extends NumericColumnOption {
   /** An inner property */
   public readonly __maxScale: number = 0
   constructor(obj?: Partial<DecimalColumnOption>) {
-    super({ ...obj, stepBy: (obj && obj.stepBy) || 0.1 });
+    super({ ...obj, stepBy: (obj && obj.stepBy) || ((obj && obj.scale && obj.scale > 0 ) ? 0.1 : 1) });
     const scale1 = (this.__initialValueNum.toString().split('.')[1] || '').length;
     const scale2 = (this.stepBy.toString().split('.')[1] || '').length;
     this.__maxScale = max(scale1,scale2);
@@ -299,7 +301,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         opt = new IntegerColumnOption(colOption);
         prevColumns.num[i]=opt.__initialValueNum - opt.stepBy;
       }
-      prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt.__maxScale! );
+      prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt instanceof DecimalColumnOption ? opt.__maxScale : 0);
     } else if (dataType instanceof types.StringType) {
       if (colOption && !(colOption instanceof StringColumnOption)) throw new GeneratorFatalError('invalid column option');
       const isChar = dataType instanceof types.CharacterStringType;
@@ -317,16 +319,16 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     } else if (dataType instanceof types.DatetimeType) {
       if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: DatetimeColumnOption = colOption || option.columnOptionsDefault.date;
-      opt = dataType instanceof types.Date ? new DateColumnOption(nonNullOpt) :
-            dataType instanceof types.Time ? new TimeColumnOption(nonNullOpt) :
-                                             new TimestampColumnOption(nonNullOpt);
-      prevColumns.date[i]=opt.initialValue;
+      opt = dataType instanceof types.Date ? new DateColumnOption({ ...nonNullOpt }) :
+            dataType instanceof types.Time ? new TimeColumnOption({ ...nonNullOpt }) :
+                                             new TimestampColumnOption({ ...nonNullOpt });
+      prevColumns.date[i]= dataType instanceof types.Time ? opt.initialValue : new Date(nonNullOpt.initialValue.getTime() - 24*60*60*1000);
     } else if (dataType instanceof types.BooleanType) {
       if (colOption && !(colOption instanceof BooleanColumnOption)) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: BooleanColumnOption = colOption || option.columnOptionsDefault.bool;
       const useNull = def.options.some(o => o instanceof co.NotNull);
       opt = new BooleanColumnOption({ ...nonNullOpt, useNull });
-      prevColumns.bool[i]=opt.initialValue;
+      prevColumns.bool[i]=!opt.initialValue;
     } else {
       throw new GeneratorFatalError('invalid data type');
     }
@@ -361,6 +363,11 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     return keysSet;
   })();
   const tableName = statement.name.value.map(ident=>ident.value).join('.');
+  if (option.outputFormat instanceof CsvFormat && option.outputFormat.header) {
+    const colNames = columnDefs.map(col => col.name.value);
+    const header = colNames.join(',');
+    yield [{ columns: colNames, row: header }, [] ];
+  }
   for(let i=0; i<option.size; i++) {
     const errors: GeneratorValidationError[] = [];
     let work={};
@@ -408,7 +415,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         if (opt instanceof StringColumnOption) return columns.str[j];
         const date=columns.date[j];
         if (opt instanceof DateColumnOption) return date.toISOString().slice(0,10);
-        if (opt instanceof TimeColumnOption) return `${date.getTime() / (60*60*1000) + date.getHours()}:${date.getMinutes}:${date.getSeconds}`;
+        if (opt instanceof TimeColumnOption) return `${Math.floor(date.getTime() / (60*60*1000)) + date.getUTCHours()}:${date.getUTCMinutes()}:${date.getUTCSeconds()}`;
         if (opt instanceof TimestampColumnOption) return date.toISOString().slice(0,19).replace('T',' ');
         const bool=columns.bool[j];
         if (opt instanceof BooleanColumnOption) return bool === undefined ? bool : bool.toString();
@@ -427,8 +434,9 @@ export async function* generate(statement: CreateTableStatement, option: Generat
 // TODO negative step
 const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): number => {
   const prev=process.prevColumns.num[process.col];
-  logger.log('add', prev, option.stepBy, option.__maxScale);
-  const next = add(prev, option.stepBy, option.__maxScale);
+  const maxScale = option instanceof DecimalColumnOption ? option.__maxScale : 0;
+  logger.log('add', prev, option.stepBy, maxScale);
+  const next = add(prev, option.stepBy, option instanceof DecimalColumnOption ? option.__maxScale : 0);
   if (next > option.limit) { // overflow
     return option.loop === 'loop'   ? option.__initialValueNum :
            option.loop === 'negate' ? -prev:
@@ -439,7 +447,7 @@ const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): n
 const generateString = (process: ColumnProcess, option: StringColumnOption): string => {
   const prev=process.prevColumns.str[process.col];
   let seq=parseInt(prev.slice(option.__prefixStr.length))+1;
-  if (option.maxLength !== Infinity && seq > +('9'.repeat(option.maxLength))) { // overflow
+  if (option.maxLength !== Infinity && seq > +('9'.repeat(option.maxLength - option.__prefixStr.length))) { // overflow
     seq = option.loop === 'loop' ? 1 : seq-1;
   }
   return option.__prefixStr + '0'.repeat(option.maxLength - option.__prefixStr.length - seq.toString().length) + seq;
