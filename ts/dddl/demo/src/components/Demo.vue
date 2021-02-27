@@ -1,0 +1,107 @@
+<template>
+  <div class="header-container">
+    <h2 class="header">DDDL</h2>
+  </div>
+  <a href="https://github.com/kena0ki/adima">
+    <img class="gh-ribbon" src="./assets/forkme_right_red_aa0000.svg">
+  </a>
+  <div>Input a create statement here:</div>
+  <div>
+    <textarea />
+  </div>
+  <button>Parse</button><button>Generate</button>
+  <div>Options</div>
+  <div>
+    <div>General options</div>
+    <div>
+      <div>Output format:</div>
+      <select />
+    </div>
+    <div>
+      <div>Column default:</div>
+      <div>
+        <div>Numeric type default:</div>
+        <div>
+          <div>Step:</div>
+          <select />
+        </div>
+      </div>
+    </div>
+    <div>Column:</div>
+  </div>
+  <div>Generated data:</div>
+  <div class="guide">
+    <div>* Right click to show menu</div>
+    <div>* Drag a horizontal line to move it around</div>
+  </div>
+  <h3 class="settings-title">Settings</h3>
+  <div class="settings-container">
+    <div class="settings settings-height-container">
+      <div class="settings-height-sub-container sub-container-settings-label-value">
+        <span class="settings-height settings-label">Height: </span>
+        <span class="settings-height settings-value">6</span>
+      </div>
+      <div class="settings-height-sub-container sub-container-settings-input">
+        <input class="settings-height settings-input" type="range" min="200" max="500">
+      </div>
+    </div>
+    <div class="settings settings-width-container">
+      <div class="settings-width-sub-container sub-container-settings-label-value">
+        <span class="settings-width settings-label">Width: </span>
+        <span class="settings-width settings-value">6</span>
+      </div>
+      <div class="settings-width-sub-container sub-container-settings-input">
+        <input class="settings-width settings-input" type="range" min="200" max="500">
+      </div>
+    </div>
+    <div class="settings settings-header-height-container">
+      <div class="settings-header-height-sub-container sub-container-settings-label-value">
+        <span class="settings-header-height settings-label">Height of header: </span>
+        <span class="settings-header-height settings-value">6</span>
+      </div>
+      <div class="settings-header-height-sub-container sub-container-settings-input">
+        <input class="settings-header-height settings-input" type="range" min="20" max="40">
+      </div>
+    </div>
+    <div class="settings settings-footer-height-container">
+      <div class="settings-footer-height-sub-container sub-container-settings-label-value">
+        <span class="settings-footer-height settings-label">Height of footer: </span>
+        <span class="settings-footer-height settings-value">6</span>
+      </div>
+      <div class="settings-footer-height-sub-container sub-container-settings-input">
+        <input class="settings-footer-height settings-input" type="range" min="20" max="40">
+      </div>
+    </div>
+    <div class="settings settings-num-vlines-container">
+      <div class="settings-num-vlines-sub-container sub-container-settings-label-value">
+        <span class="settings-num-vlines settings-label">Number of virtical lines: </span>
+        <span class="settings-num-vlines settings-value">6</span>
+      </div>
+      <div class="settings-num-vlines-sub-container sub-container-settings-input">
+        <input class="settings-num-vlines settings-input" type="range" min="2" max="20">
+      </div>
+    </div>
+    <div class="settings settings-num-hlines-container">
+      <div class="settings-num-hlines-sub-container sub-container-settings-label-value">
+        <span class="settings-num-hlines settings-label">Number of horizontal lines: </span>
+        <span class="settings-num-hlines settings-value">10</span>
+      </div>
+      <div class="settings-num-hlines-sub-container sub-container-settings-input">
+        <input class="settings-num-hlines settings-input" type="range" min="0" max="50">
+      </div>
+    </div>
+    <div class="rerender-btn-container">
+      <button id="rerender-btn">rerender</button>
+    </div>
+  </div>
+  <div class="footer-container">
+    <div class="footer">Maintained by kena0ki</div>
+  </div>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+export default defineComponent({
+  name: 'Demo',
+});
+</script>

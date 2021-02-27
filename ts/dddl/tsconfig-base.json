@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["esnext", "dom"],
-    "target": "es5",
+    "target": "ES5",
     "strictNullChecks": true,
     "module": "ES6",
     "moduleResolution": "node",
