@@ -1,0 +1,32 @@
+@import "node_modules/purecss/build/pure-min.css";
+
+html {
+  height: 100%;
+  width: 100%;
+}
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#app {
+  width: 100%;
+  max-width: 500px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  /*
+  margin-top: 60px;
+  */
+}
+html, button, input, select, textarea,
+.pure-g [class *= "pure-u"] {
+  /* Set your content font stack here: */
+  /*
+  font-family: Georgia, Times, "Times New Roman", serif;
+  */
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+}
