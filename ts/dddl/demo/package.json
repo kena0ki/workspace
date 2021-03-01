@@ -14,7 +14,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.1.4",
     "@vue/compiler-sfc": "^3.0.5",
-    "dddl": "file:../",
+    "dddl": "file:../dist",
     "esbuild": "file:../node_modules/esbuild/",
     "eslint": "file:../node_modules/eslint/",
     "eslint-plugin-vue": "^7.6.0",
