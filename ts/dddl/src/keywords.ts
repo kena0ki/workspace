@@ -1,4 +1,4 @@
-import { types } from '../data-types';
+import { dataTypes as types } from './data-types';
 
 export const KEYWORDS = [ // only contains keywords that is necessary for create statements
   'CREATE',
@@ -63,4 +63,7 @@ export function isKeyword<T extends Keyword>(src: string, keyword: T): src is T 
 export function isOneOfKeywords<T extends Keyword>(src: string, keywords: T[]): src is T {
   return keywords.some(keyword => src.toUpperCase() === keyword);
 }
+
+export * as keywords from './keywords';
+export * from './keywords';
 

@@ -1,6 +1,6 @@
-import { DataType } from '../data-types';
+import { DataType } from './data-types';
 import { BinaryOperator, UnaryOperator } from './operators';
-import { Ident, ObjectName } from '../parser';
+import { Ident, ObjectName } from './parser';
 
 export class Expr {
   private _expr:void
@@ -99,4 +99,7 @@ export class ListAgg extends Expr {
 }
 export class Subquery extends Expr {
 }
+
+export * as exprs from './expressions';
+export * from './expressions';
 

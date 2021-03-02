@@ -95,13 +95,20 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { types } from 'dddl';
+import { ref, defineComponent, Ref } from 'vue';
+import {
+  GeneratorOption,
+  NumericColumnOption,
+  StringColumnOption,
+  DatetimeColumnOption,
+  BooleanColumnOption,
+} from '../../../dist';
 export default defineComponent({
   name: 'Demo',
-  setup() {
-    types.a;
+  setup(): { option: Ref<GeneratorOption> } {
+    const option = ref(new GeneratorOption);
     return {
+      option,
     };
   },
 });

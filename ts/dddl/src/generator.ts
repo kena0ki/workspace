@@ -1,5 +1,5 @@
 import { CreateTableStatement, TableConstraint, parser } from './parser';
-import { types } from './data-types';
+import { dataTypes as types } from './data-types';
 import { columnOptions as co } from './column-options';
 import { logger,max,min,add,subtract } from './util';
 

@@ -3,3 +3,8 @@ extends:
 rules:
   'vue/singleline-html-element-content-newline': 'off'
   'vue/max-attributes-per-line': 'off'
+parserOptions:
+  parser: "@typescript-eslint/parser"
+#  ecmaVersion: 2020
+#  sourceType: "module"
+

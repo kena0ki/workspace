@@ -9,3 +9,6 @@ export class BinaryOperator {
   ) {}
 }
 
+export * from './operators';
+export * as operators from './operators';
+

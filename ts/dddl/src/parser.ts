@@ -1,7 +1,9 @@
 import { token as tk, Token, TokenSet } from './tokenizer';
-import { types, DataType } from './data-types';
+import { dataTypes as types, DataType } from './data-types';
 import { keywords, Keyword } from './keywords';
-import { exprs, Expr, values, Value, ops } from './expressions';
+import { exprs, Expr } from './expressions';
+import { values, Value } from './values';
+import { operators as ops } from './operators';
 import { ColumnOption, columnOptions as colOpts } from './column-options';
 import { logger } from './util';
 

@@ -207,3 +207,5 @@ export const inDataTypeNameOptPS = (name: string|DataTypeNameOptPS): name is Dat
 export const inDataTypeNameOptP = (name: string|DataTypeNameOptP): name is DataTypeNameOptP => DATA_TYPE_NAMES_OPT_P.includes(name as DataTypeNameOptP);
 export const inDataTypeNameNoArgs = (name: string|DataTypeNameNoArgs): name is DataTypeNameNoArgs => DATA_TYPE_NAMES_NO_ARGS.includes(name as DataTypeNameNoArgs);
 
+export * as dataTypes from './data-types';
+export * from './data-types';

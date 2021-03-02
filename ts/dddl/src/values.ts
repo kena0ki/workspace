@@ -22,3 +22,5 @@ export class Null extends Value<undefined> {
   constructor() { super(undefined); }
 }
 
+export * as values from './values';
+export * from './values';
