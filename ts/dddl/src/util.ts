@@ -2,7 +2,7 @@
 
 export const global = Function('return this')();
 
-export const logger = global.dddlEnableLog || process.env.DDDL_ENABLE_LOG ? console : {
+export const logger = global.dddlEnableLog || (global.process && global.process.env.DDDL_ENABLE_LOG) ? console : {
   log(){},
   trace(){},
   time(){},
@@ -23,6 +23,8 @@ export const max = (...args: number[]): number => args.sort((a,b) => b-a)[0];
 const surrogatePairs = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
 export const length = (str: string): number => str.replace(surrogatePairs,' ').length;
 
+// dirty hack for calculation of floating point number.
+// TODO overflow
 export const add = (left:number, right:number, scale:number): number => {
   if (scale <= 0) return left+right;
   const coefficient=10**scale;

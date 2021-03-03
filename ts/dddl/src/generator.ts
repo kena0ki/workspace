@@ -60,6 +60,7 @@ export class CsvFormat {
 export class InsertStatementFormat {
   private _insertStatementFormat='nominal'
 }
+export const NUM_LOOP_OPTS = ['loop','negate','keep'] as const;
 /** NumericColumnOptions is used for GeneratorOption.columnOptions */
 export class NumericColumnOption {
   /** How much advance per each row. Default: 1 for integers, 0.1 for decimals */
@@ -76,7 +77,7 @@ export class NumericColumnOption {
    *   negate: negate the value and continue to increment
    *   keep: stop incrementation and keep the limit value
    */
-  public readonly loop: 'loop'|'negate'|'keep' = 'loop'
+  public readonly loop: typeof NUM_LOOP_OPTS[number] = 'loop'
   public constructor(obj?: Omit<Partial<NumericColumnOption>, '__initialValueNum'>) {
     if (!obj) return;
     Object.assign(this,obj);
@@ -101,12 +102,14 @@ class DecimalColumnOption extends NumericColumnOption {
     this.__maxScale = max(scale1,scale2);
   }
 }
+export const STR_LOOP_OPTS = ['loop','keep'] as const;
+export const LENGTH_IN_OPTS = ['char','byte'] as const;
 /** StringColumnOption is used for GeneratorOption.columnOptions */
 export class StringColumnOption {
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
   public readonly maxLength: number = 0
   /** Which measurement unit to use, either char or byte. Default: char */
-  public readonly lengthIn: 'char'|'byte' = 'char'
+  public readonly lengthIn: typeof LENGTH_IN_OPTS[number] = 'char'
   /** Prefix. Default: a character in A-Z, a-z, depending on the column position */
   public readonly prefix: Prefix = ''
   /** An inner property */
@@ -116,7 +119,7 @@ export class StringColumnOption {
    *   loop: back to the initial value and continue to increment
    *   keep: stop incrementation and keep the limit value
    */
-  public readonly loop?: 'loop'|'keep' = 'loop'
+  public readonly loop?: typeof STR_LOOP_OPTS[number] = 'loop'
   public constructor(obj?: Omit<Partial<StringColumnOption>, '__prefixStr'>) {
     if (!obj) return;
     Object.assign(this,obj);

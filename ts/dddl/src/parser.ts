@@ -27,7 +27,7 @@ export class ObjectName {
     public readonly value: Ident[]
   ) {}
 }
-class ColumnDef {
+export class ColumnDef {
   constructor(
     public readonly name: Ident,
     public readonly dataType: DataType,
@@ -112,8 +112,6 @@ export const parse = (src: string): [CreateTableStatement[],undefined]|[undefine
       const [,stmt] = [idx] = parseCreateStatement(tokenSet, idx);
       statements.push(stmt);
       logger.log(stmt,idx);
-      const u = require('util');
-      logger.log(u.inspect(stmt, {depth:null}));
     }
   } catch (err: unknown) {
     logger.log(tokenSet, idx);
