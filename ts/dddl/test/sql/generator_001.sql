@@ -5,7 +5,7 @@ create table "ITEM" (
   name binary(20),
   type char(2),
   rate decimal(1,0),
-  soldout boolean,
+  sold_out boolean,
   updatedAt timestamp,
   updateDate date,
   updateTime time,

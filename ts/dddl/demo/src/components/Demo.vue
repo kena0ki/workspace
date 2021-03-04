@@ -110,26 +110,26 @@
           </div>
         </div>
         <h4>Column options</h4>
-        <template v-for="(usedIdx,usedIdxIdx) in colIdxInUse" :key="usedIdxIdx">
+        <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
           <div class="column-options">
             <label class="options label" for="options-column-options-column-name">Column name:</label>
-            <select id="options-column-options-column-name" v-model="colIdxInUse[usedIdxIdx]" class="options select">
-              <option v-for="(opt,idx) in columnDefs.filter((_,i) => !colIdxInUse.includes(i))" :key="idx" :value="idx">{{ opt.colName }}</option>
+            <select id="options-column-options-column-name" v-model="colNameInUse2[nameIdx]" class="options select">
+              <option v-for="(opt) in columnDefs.filter(def => !colNameInUse.includes(def.colName))" :key="opt" >{{ opt.colName }}</option>
             </select>
-            <template v-if="columnDefs[usedIdx] instanceof dataTypes.NumericType">
+            <template v-if="type instanceof dataTypes.NumericType">
               num
             </template>
-            <template v-if="columnDefs[usedIdx] instanceof dataTypes.StringType">
+            <template v-if="type instanceof dataTypes.StringType">
               string
             </template>
-            <template v-if="columnDefs[usedIdx] instanceof dataTypes.DatetimeType">
+            <template v-if="type instanceof dataTypes.DatetimeType">
               datetime
             </template>
-            <template v-if="columnDefs[usedIdx] instanceof dataTypes.BooleanType">
+            <template v-if="type instanceof dataTypes.BooleanType">
               boolean
             </template>
           </div>
-        </template>
+        </div>
       </div>
       <div>
         <input type="button" value="Add" class="pure-button input-area-button column-options-add" @click="onAddColOpt">
@@ -144,18 +144,6 @@
     </div>
     <div class="output-area-button-container">
       <input type="button" value="Generate" class="pure-button output-area-button">
-    </div>
-  </div>
-  <h3 class="settings-title">Settings</h3>
-  <div class="settings-container">
-    <div class="settings settings-height-container">
-      <div class="settings-height-sub-container sub-container-settings-label-value">
-        <span class="settings-height settings-label">Height: </span>
-        <span class="settings-height settings-value">6</span>
-      </div>
-      <div class="settings-height-sub-container sub-container-settings-input">
-        <input class="settings-height settings-input" type="range" min="200" max="500">
-      </div>
     </div>
   </div>
   <div class="footer-container dummy">
@@ -189,12 +177,25 @@ const COLUMN_OPTIONS_TYPES = [
   { clazz: DatetimeColumnOption, label: 'Datetime type' },
   { clazz: BooleanColumnOption, label: 'Boolean type' },
 ];
+const DDL=`create table "ITEM" (
+  id char(10),
+  price decimal(10,3),
+  qty INTEGER,
+  name binary(20),
+  type char(2),
+  rate decimal(1,0),
+  sold_out boolean,
+  updatedAt timestamp,
+  updateDate date,
+  updateTime time,
+);`;
 export default defineComponent({
   name: 'Demo',
   setup() {
-    const ddl = ref('');
+    const ddl = ref(DDL);
     const option = ref(new GeneratorOption);
-    const colIdxInUse = ref<(number|undefined)[]>([]);
+    const colNameInUse2 = ref<(string|undefined)[]>([]);
+    const colNameInUse = ref<(string|undefined)[]>([]);
     type ColDefType = ({colName: string, type: dataTypes.DataType})[];
     const columnDefs = ref<ColDefType>([]);
     const onParse = () => {
@@ -205,7 +206,7 @@ export default defineComponent({
       console.log(columnDefs.value);
     };
     const onAddColOpt = () => {
-      colIdxInUse.value.push(undefined);
+      colNameInUse.value.push(undefined);
     };
     return {
       ddl,
@@ -216,7 +217,8 @@ export default defineComponent({
       LENGTH_IN_OPTS,
       columnDefs,
       dataTypes,
-      colIdxInUse,
+      colNameInUse,
+      colNameInUse2,
       onParse,
       onAddColOpt,
     };
@@ -313,32 +315,5 @@ hr {
   top: 0;
   right: 0;
   z-index: 1;
-}
-.settings {
-  margin: 1rem 0;
-}
-.sub-container-settings-input {
-  text-align: center;
-}
-.settings-container {
-  max-width: 400px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.settings {
-  width: 200px;
-}
-.guide {
-  font-size: .7rem;
-  color: rgba(0,0,0,.5);
-}
-.settings-title {
-  margin: 2rem auto 0 auto;
-}
-.rerender-btn-container {
-  text-align: center;
-  margin: 1rem auto 3rem auto;
-  width: 100%;
 }
 </style>
