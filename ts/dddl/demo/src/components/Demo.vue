@@ -113,8 +113,8 @@
         <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
           <div class="column-options">
             <label class="options label" for="options-column-options-column-name">Column name:</label>
-            <select id="options-column-options-column-name" v-model="colNameInUse2[nameIdx]" class="options select">
-              <option v-for="(opt) in columnDefs.filter(def => !colNameInUse.includes(def.colName))" :key="opt" >{{ opt.colName }}</option>
+            <select id="options-column-options-column-name" v-model="colNameInUse[nameIdx]" class="options select">
+              <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
             </select>
             <template v-if="type instanceof dataTypes.NumericType">
               num
@@ -194,7 +194,6 @@ export default defineComponent({
   setup() {
     const ddl = ref(DDL);
     const option = ref(new GeneratorOption);
-    const colNameInUse2 = ref<(string|undefined)[]>([]);
     const colNameInUse = ref<(string|undefined)[]>([]);
     type ColDefType = ({colName: string, type: dataTypes.DataType})[];
     const columnDefs = ref<ColDefType>([]);
@@ -218,7 +217,6 @@ export default defineComponent({
       columnDefs,
       dataTypes,
       colNameInUse,
-      colNameInUse2,
       onParse,
       onAddColOpt,
     };
