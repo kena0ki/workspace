@@ -6,11 +6,12 @@ import { logger,max,min,add,subtract } from './util';
 type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
 type GenColOptType = { [columnName: string]: ColumnOptionUnion|FixedValue|undefined };
 type Prefix = string|((col: number, colName: string) => string);
+type Structual<T> = T extends Function | Array<any> ? T : T extends object ? { [K in keyof T]: Structual<T[K]> } : T;
 
 /** Options for data to be generated. */
-export class GeneratorOption {
+export class GeneratorOption<T extends {} = {}> {
   /** Output format. Either csv or insert statement. */
-  outputFormat: CsvFormat|InsertStatementFormat = new CsvFormat
+  public readonly outputFormat: CsvFormat|InsertStatementFormat = new CsvFormat
   /**
    *  Options for each column to determine how they are generated.
    *  The options need to be valid types for corresponding columns.
@@ -22,19 +23,19 @@ export class GeneratorOption {
    *  If you want a fixed value for some columns throughout entire data,
    *  you can specify the value using FixedValue.
    */
-  columnOptions: GenColOptType = {}
+  public readonly columnOptions: GenColOptType = {}
   /**
    * Fall back column option for each column types.
    */
-  columnOptionsDefault: ColumnOptionDefaultType = { num: new NumericColumnOption, str: new StringColumnOption, date: new DatetimeColumnOption, bool: new BooleanColumnOption }
+  public readonly columnOptionsDefault: ColumnOptionDefaultType = { num: new NumericColumnOption, str: new StringColumnOption, date: new DatetimeColumnOption, bool: new BooleanColumnOption }
   /**
    * A function to manipulate row data after it's generated.
    * The column you can modify is only the column which is set FixValue option.
    */
-  eachRow?<T extends {} = {}>(columns: ColumnsType, process: RowProcess, prev: T): [columns: ColumnsType, next: T]
+  public readonly eachRow?: (columns: ColumnsType, process: RowProcess, prev: T) => [columns: ColumnsType, next: T]
   /** The number of rows to be generated. Default: 10 */
-  size: number = 10
-  public constructor(obj?: GeneratorOption) { // TODO Partial
+  public readonly size: number = 10
+  constructor(obj?: Partial<Structual<GeneratorOption>>) {
     if (!obj) return;
     Object.assign(this,obj);
   }
@@ -51,7 +52,7 @@ export class CsvFormat {
   /** Whether output header or not. Default: false */
   public readonly header: boolean = false
   /** Define options */
-  public constructor(obj?: Partial<CsvFormat>) {
+  constructor(obj?: Partial<CsvFormat>) {
     if (!obj) return;
     Object.assign(this,obj);
   }
@@ -78,7 +79,7 @@ export class NumericColumnOption {
    *   keep: stop incrementation and keep the limit value
    */
   public readonly loop: typeof NUM_LOOP_OPTS[number] = 'loop'
-  public constructor(obj?: Omit<Partial<NumericColumnOption>, '__initialValueNum'>) {
+  constructor(obj?: Omit<Partial<NumericColumnOption>, '__initialValueNum'>) {
     if (!obj) return;
     Object.assign(this,obj);
   }
@@ -120,7 +121,7 @@ export class StringColumnOption {
    *   keep: stop incrementation and keep the limit value
    */
   public readonly loop?: typeof STR_LOOP_OPTS[number] = 'loop'
-  public constructor(obj?: Omit<Partial<StringColumnOption>, '__prefixStr'>) {
+  constructor(obj?: Omit<Partial<StringColumnOption>, '__prefixStr'>) {
     if (!obj) return;
     Object.assign(this,obj);
   }
@@ -157,7 +158,7 @@ export class DatetimeColumnOption {
    *     Timestamp type : 1 day.
    */
   public readonly stepBy: number = 1
-  public constructor(obj?: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
+  constructor(obj?: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
     if (!obj) return;
     Object.assign(this,obj);
   }
@@ -189,7 +190,7 @@ export class BooleanColumnOption {
   public readonly random: boolean = false
   /** Whether use null value or not. If table column has not-null constraint, this option is ignored. Default: false */
   public readonly useNull: boolean = false
-  public constructor(obj?: Partial<BooleanColumnOption>) {
+  constructor(obj?: Partial<BooleanColumnOption>) {
     if (!obj) return;
     Object.assign(this,obj);
   }

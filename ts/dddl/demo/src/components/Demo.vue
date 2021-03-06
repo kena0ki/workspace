@@ -15,11 +15,13 @@
       <div class="input-area-create-statement-container">
         <textarea v-model="ddl" class="input-area-create-statement" />
       </div>
+      <div class="spacer-1em" />
       <div class="input-area-button-container">
-        <input type="button" value="Parse" class="pure-button output-area-button" @click="onParse">
+        <input type="button" value="Parse" class="pure-button output-area-button" @click="onClickParse">
       </div>
     </form>
   </div>
+  <div class="spacer-1em" />
   <hr>
   <div class="options-area">
     <div class="options-header">
@@ -34,7 +36,7 @@
           <option>Csv</option>
           <option>Insert statement</option>
         </select>
-        <h4>Column option default for each type</h4>
+        <h4>Column option for each type</h4>
         <div class="column-option-default indent-05">
           <h5>Numeric type</h5>
           <div class="column-option-default-numeric indent-05">
@@ -109,10 +111,13 @@
             </div>
           </div>
         </div>
-        <h4>Column options</h4>
+        <h4>
+          Column option for each column
+          <input type="button" value="+" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">
+        </h4>
         <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
-          <div class="column-options">
-            <label class="options label" for="options-column-options-column-name">Column name:</label>
+          <div class="column-options indent-05">
+            <h5 style="display: inline-block" class="options label" for="options-column-options-column-name">Column name:</h5>
             <select id="options-column-options-column-name" v-model="colNameInUse[nameIdx]" class="options select">
               <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
             </select>
@@ -131,21 +136,24 @@
           </div>
         </div>
       </div>
-      <div>
-        <input type="button" value="Add" class="pure-button input-area-button column-options-add" @click="onAddColOpt">
-      </div>
     </form>
   </div>
+  <div class="spacer-1em" />
   <hr>
   <div class="output-area">
     <div class="output-header">
       <h2>Output</h2>
-      <p>Step3. Now, it's time to generate data. Click generate button.</p>
+      <p>Step3. Click the generate button.</p>
     </div>
     <div class="output-area-button-container">
-      <input type="button" value="Generate" class="pure-button output-area-button">
+      <input type="button" value="Generate" class="pure-button output-area-button" :disabled="!parseDone" @click="onClickGenerate">
+    </div>
+    <div class="spacer-1em" />
+    <div class="generated-data-container">
+      <textarea :value="generatedData" class="generated-data" wrap="off" disabled />
     </div>
   </div>
+  <div class="spacer-2em" />
   <div class="footer-container dummy">
     <div class="footer">dummy</div>
   </div>
@@ -157,6 +165,7 @@
 <script lang="ts">
 import { ref, defineComponent } from 'vue';
 import {
+  generate,
   GeneratorOption,
   NumericColumnOption,
   StringColumnOption,
@@ -166,7 +175,8 @@ import {
   STR_LOOP_OPTS,
   LENGTH_IN_OPTS,
   dataTypes,
-  parser,
+  parse,
+  CreateTableStatement,
 } from '../../../dist';
 // type SetUp = {
 //   option: Ref<UnwrapRef<GeneratorOption>>,
@@ -197,19 +207,33 @@ export default defineComponent({
     const colNameInUse = ref<(string|undefined)[]>([]);
     type ColDefType = ({colName: string, type: dataTypes.DataType})[];
     const columnDefs = ref<ColDefType>([]);
-    const onParse = () => {
-      const [statements, error] = parser.parse(ddl.value);
+    let parseDone = ref(false);
+    let stmt: CreateTableStatement|undefined;
+    const onClickParse = () => {
+      const [statements, error] = parse(ddl.value);
       if (!statements) throw error;
       if (statements.length<=0) return;
+      stmt = statements[0];
+      parseDone.value = true;
       columnDefs.value = statements[0].columns.reduce<ColDefType>((prev, curr) => prev.concat({ colName: curr.name.value, type: curr.dataType }), []);
       console.log(columnDefs.value);
     };
-    const onAddColOpt = () => {
+    const onClickAddColOpt = () => {
       colNameInUse.value.push(undefined);
+    };
+    const generatedData = ref('');
+    const onClickGenerate = async () => {
+      if (!stmt) return;
+      generatedData.value = '';
+      for await (const [result, errors]  of generate(stmt, new GeneratorOption(option.value))) {
+        if (errors.length > 0) throw errors;
+        generatedData.value += result.row + '\n';
+      }
     };
     return {
       ddl,
       option,
+      parseDone,
       COLUMN_OPTIONS_TYPES,
       NUM_LOOP_OPTS,
       STR_LOOP_OPTS,
@@ -217,17 +241,16 @@ export default defineComponent({
       columnDefs,
       dataTypes,
       colNameInUse,
-      onParse,
-      onAddColOpt,
+      generatedData,
+      onClickParse,
+      onClickAddColOpt,
+      onClickGenerate,
     };
   },
 });
 </script>
 
 <style>
-hr {
-  margin-top: 2em;
-}
 .header-container {
   position: fixed;
   top: 0;
@@ -259,7 +282,7 @@ hr {
 }
 .input-area-create-statement {
   width: 90%;
-  height: 90%;
+  height: 100%;
 }
 .input-area-button,
 .output-area-button {
@@ -287,6 +310,23 @@ hr {
   font-size: revert;
   margin: .5em;
 }
+.generated-data-container {
+  width: 100%;
+  height: 40vh;
+}
+.generated-data {
+  width: 98%;
+  height: 100%;
+}
+.spacer-1em {
+  height: 1em;
+}
+.spacer-2em {
+  height: 2em;
+}
+.column-options-add {
+  font-size: 60%;
+}
 
 .footer-container {
   position: fixed;
@@ -297,13 +337,14 @@ hr {
   background-color: white;
   box-shadow: inset 0 0 3em rgba(0, 0, 0,.1);
   z-index: 1;
+  padding: .5em;
 }
 .footer-container.dummy {
   position: relative;
   z-index: -1;
 }
 .footer {
-  margin: .5rem;
+  margin: 0 1em;
 }
 .gh-ribbon {
   display: block;
