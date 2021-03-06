@@ -118,14 +118,54 @@
         <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
           <div class="column-options indent-05">
             <h5 style="display: inline-block" class="options label" for="options-column-options-column-name">Column name:</h5>
-            <select id="options-column-options-column-name" v-model="colNameInUse[nameIdx]" class="options select">
+            <select id="options-column-options-column-name" :value="colNameInUse[nameIdx]" class="options select" @change="onChangeColName(nameIdx, $event)">
               <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
             </select>
             <template v-if="type instanceof dataTypes.NumericType">
-              num
+              <div class="column-option-default-numeric indent-05">
+                <div>
+                  <label class="options label" for="column-option-default-numeric-step">Step:</label>
+                  <input id="column-option-default-numeric-step" v-model="option.columnOptions[name].stepBy" class="options input">
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
+                  <input id="column-option-default-numeric-initial-value" v-model="option.columnOptions[name].initialValue" class="options input">
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
+                  <input id="column-option-default-numeric-limit" v-model="option.columnOptions[name].limit" class="options input">
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
+                  <select id="column-option-default-numeric-loop" v-model="option.columnOptions[name].loop" class="options select">
+                    <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                  </select>
+                </div>
+              </div>
             </template>
             <template v-if="type instanceof dataTypes.StringType">
-              string
+              <div class="column-option-default-string indent-05">
+                <div>
+                  <label class="options label" for="column-option-default-string-max-length">Max length:</label>
+                  <input id="column-option-default-string-max-length" v-model="option.columnOptionsDefault.str.maxLength" class="options input">
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
+                  <select id="column-option-default-string-length-in" v-model="option.columnOptionsDefault.str.lengthIn" class="options select">
+                    <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
+                  <input id="column-option-default-string-prefix" class="options input">
+                </div>
+                <div>
+                  <label class="options label" for="column-option-default-string-loop">Loop:</label>
+                  <select id="column-option-default-string-loop" v-model="option.columnOptionsDefault.str.loop" class="options select">
+                    <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                  </select>
+                </div>
+              </div>
             </template>
             <template v-if="type instanceof dataTypes.DatetimeType">
               datetime
@@ -230,6 +270,22 @@ export default defineComponent({
         generatedData.value += result.row + '\n';
       }
     };
+    const onChangeColName = (idx: number, event: Event) => {
+      const oldName = colNameInUse.value[idx];
+      if (oldName) option.value.columnOptions[oldName] = undefined;
+      const newName = (event.target as HTMLInputElement).value;
+      colNameInUse.value[idx] = newName;
+      const type = columnDefs.value.find(def => def.colName === newName)?.type;
+      if (type instanceof dataTypes.NumericType) {
+        option.value.columnOptions[newName] = new NumericColumnOption();
+      } else if (type instanceof dataTypes.StringType) {
+        option.value.columnOptions[newName] = new StringColumnOption();
+      } else if (type instanceof dataTypes.DatetimeType) {
+        option.value.columnOptions[newName] = new DatetimeColumnOption();
+      } else if (type instanceof dataTypes.BooleanType) {
+        option.value.columnOptions[newName] = new BooleanColumnOption();
+      }
+    };
     return {
       ddl,
       option,
@@ -245,6 +301,7 @@ export default defineComponent({
       onClickParse,
       onClickAddColOpt,
       onClickGenerate,
+      onChangeColName,
     };
   },
 });
