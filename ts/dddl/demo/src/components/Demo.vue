@@ -17,7 +17,7 @@
       </div>
       <div class="spacer-1em" />
       <div class="input-area-button-container">
-        <input type="button" value="Parse" class="pure-button output-area-button" @click="onClickParse">
+        <button type="button" class="pure-button output-area-button" @click="onClickParse">Parse</button>
       </div>
     </form>
   </div>
@@ -29,150 +29,191 @@
       <p>Step2. Set options for data to be generated.</p>
     </div>
     <form class="options-form pure-form">
-      <h3 class="general-options-header">General options</h3>
-      <div class="general-options indent-05">
-        <label class="options label" for="options-output-format">Output format:</label>
-        <select id="options-output-format" class="options select">
-          <option>Csv</option>
-          <option>Insert statement</option>
-        </select>
-        <h4>Column option for each type</h4>
-        <div class="column-option-default indent-05">
-          <h5>Numeric type</h5>
-          <div class="column-option-default-numeric indent-05">
-            <div>
-              <label class="options label" for="column-option-default-numeric-step">Step:</label>
-              <input id="column-option-default-numeric-step" v-model="option.columnOptionsDefault.num.stepBy" class="options input">
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
-              <input id="column-option-default-numeric-initial-value" v-model="option.columnOptionsDefault.num.initialValue" class="options input">
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
-              <input id="column-option-default-numeric-limit" v-model="option.columnOptionsDefault.num.limit" class="options input">
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
-              <select id="column-option-default-numeric-loop" v-model="option.columnOptionsDefault.num.loop" class="options select">
-                <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-          </div>
-          <h5>String type</h5>
-          <div class="column-option-default-string indent-05">
-            <div>
-              <label class="options label" for="column-option-default-string-max-length">Max length:</label>
-              <input id="column-option-default-string-max-length" v-model="option.columnOptionsDefault.str.maxLength" class="options input">
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
-              <select id="column-option-default-string-length-in" v-model="option.columnOptionsDefault.str.lengthIn" class="options select">
-                <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
-              <input id="column-option-default-string-prefix" class="options input">
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-string-loop">Loop:</label>
-              <select id="column-option-default-string-loop" v-model="option.columnOptionsDefault.str.loop" class="options select">
-                <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-          </div>
-          <h5>Datetime type</h5>
-          <div class="column-option-default-datetime indent-05">
-            <div>
-              <label class="options label" for="column-option-default-datetime-initial-value">Initial value:</label>
-              <input id="column-option-default-datetime-initial-value" class="options input">
-            </div>
-          </div>
-          <h5>Boolean type</h5>
-          <div class="column-option-default-boolean indent-05">
-            <div>
-              <label class="options label" for="column-option-default-boolean-initial-value">Initial value:</label>
-              <select id="column-option-default-boolean-loop" v-model="option.columnOptionsDefault.bool.initialValue" class="options select">
-                <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-boolean-random">Random:</label>
-              <select id="column-option-default-boolean-loop" v-model="option.columnOptionsDefault.bool.random" class="options select">
-                <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="options label" for="column-option-default-boolean-use-null">Use null:</label>
-              <select id="column-option-default-boolean-use-null" v-model="option.columnOptionsDefault.bool.useNull" class="options select">
-                <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <h4>
-          Column option for each column
-          <input type="button" value="+" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">
-        </h4>
-        <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
-          <div class="column-options indent-05">
-            <h5 style="display: inline-block" class="options label" for="options-column-options-column-name">Column name:</h5>
-            <select id="options-column-options-column-name" :value="colNameInUse[nameIdx]" class="options select" @change="onChangeColName(nameIdx, $event)">
-              <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
+      <div class="accordion-container">
+        <button type="button" class="accordion-button" :disabled="!parseDone" @click="onClickAccordion($event)">
+          <h3 class="general-options-header accordion" @click="onClickAccordion($event)">> General options</h3>
+        </button>
+        <div class="accordion-panel">
+          <div class="general-options indent-05 panel">
+            <label class="options label" for="options-output-format">Output format:</label>
+            <select id="options-output-format" class="options select">
+              <option v-for="opt in OutputFormatOption" :key="opt.label">{{ opt.label }}</option>
             </select>
-            <template v-if="type instanceof dataTypes.NumericType">
-              <div class="column-option-default-numeric indent-05">
-                <div>
-                  <label class="options label" for="column-option-default-numeric-step">Step:</label>
-                  <input id="column-option-default-numeric-step" v-model="option.columnOptions[name].stepBy" class="options input">
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
-                  <input id="column-option-default-numeric-initial-value" v-model="option.columnOptions[name].initialValue" class="options input">
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
-                  <input id="column-option-default-numeric-limit" v-model="option.columnOptions[name].limit" class="options input">
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
-                  <select id="column-option-default-numeric-loop" v-model="option.columnOptions[name].loop" class="options select">
-                    <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
-                  </select>
+            <div class="accordion-container">
+              <button type="button" class="accordion-button" @click="onClickAccordion($event)">
+                <h4 class="accordion">> Column option by type</h4>
+              </button>
+              <div class="accordion-panel">
+                <div class="column-option-default indent-05 panel">
+                  <h5>Numeric type</h5>
+                  <div class="column-option-default-numeric indent-05">
+                    <div>
+                      <label class="options label" for="column-option-default-numeric-step">Step:</label>
+                      <input id="column-option-default-numeric-step" v-model="option.columnOptionsDefault.num.stepBy" class="options input">
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
+                      <input id="column-option-default-numeric-initial-value" v-model="option.columnOptionsDefault.num.initialValue" class="options input">
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
+                      <input id="column-option-default-numeric-limit" v-model="option.columnOptionsDefault.num.limit" class="options input">
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
+                      <select id="column-option-default-numeric-loop" v-model="option.columnOptionsDefault.num.loop" class="options select">
+                        <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <h5>String type</h5>
+                  <div class="column-option-default-string indent-05">
+                    <div>
+                      <label class="options label" for="column-option-default-string-max-length">Max length:</label>
+                      <input id="column-option-default-string-max-length" v-model="option.columnOptionsDefault.str.maxLength" class="options input">
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
+                      <select id="column-option-default-string-length-in" v-model="option.columnOptionsDefault.str.lengthIn" class="options select">
+                        <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
+                      <input id="column-option-default-string-prefix" class="options input">
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-string-loop">Loop:</label>
+                      <select id="column-option-default-string-loop" v-model="option.columnOptionsDefault.str.loop" class="options select">
+                        <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <h5>Datetime type</h5>
+                  <div class="column-option-default-datetime indent-05">
+                    <div>
+                      <label class="options label" for="column-option-default-datetime-initial-value">Initial value:</label>
+                      <input id="column-option-default-datetime-initial-value" v-model="option.columnOptionsDefault.date.initialValue" class="options input">
+                    </div>
+                  </div>
+                  <h5>Boolean type</h5>
+                  <div class="column-option-default-boolean indent-05">
+                    <div>
+                      <label class="options label" for="column-option-default-boolean-initial-value">Initial value:</label>
+                      <select id="column-option-default-boolean-loop" v-model="option.columnOptionsDefault.bool.initialValue" class="options select">
+                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-boolean-random">Random:</label>
+                      <select id="column-option-default-boolean-loop" v-model="option.columnOptionsDefault.bool.random" class="options select">
+                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="options label" for="column-option-default-boolean-use-null">Use null:</label>
+                      <select id="column-option-default-boolean-use-null" v-model="option.columnOptionsDefault.bool.useNull" class="options select">
+                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </template>
-            <template v-if="type instanceof dataTypes.StringType">
-              <div class="column-option-default-string indent-05">
-                <div>
-                  <label class="options label" for="column-option-default-string-max-length">Max length:</label>
-                  <input id="column-option-default-string-max-length" v-model="option.columnOptionsDefault.str.maxLength" class="options input">
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
-                  <select id="column-option-default-string-length-in" v-model="option.columnOptionsDefault.str.lengthIn" class="options select">
-                    <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
-                  <input id="column-option-default-string-prefix" class="options input">
-                </div>
-                <div>
-                  <label class="options label" for="column-option-default-string-loop">Loop:</label>
-                  <select id="column-option-default-string-loop" v-model="option.columnOptionsDefault.str.loop" class="options select">
-                    <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
-                  </select>
+            </div>
+            <div class="accordion-container">
+              <button type="button" class="accordion-button" @click="onClickAccordion($event)">
+                <h4 class="accordion">
+                  > Column option
+                </h4>
+              </button>
+              <button type="button" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">+</button>
+              <div class="accordion-panel">
+                <div class="column-options indent-05">
+                  <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
+                    <h5 style="display: inline-block" class="options label" for="options-column-options-column-name">Column name:</h5>
+                    <select id="options-column-options-column-name" :value="colNameInUse[nameIdx]" class="options select" @change="onChangeColName(nameIdx, $event)">
+                      <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
+                    </select>
+                    <template v-if="type instanceof dataTypes.NumericType">
+                      <div class="column-option-default-numeric indent-05">
+                        <div>
+                          <label class="options label" for="column-option-default-numeric-step">Step:</label>
+                          <input id="column-option-default-numeric-step" v-model="option.columnOptions[name].stepBy" class="options input">
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
+                          <input id="column-option-default-numeric-initial-value" v-model="option.columnOptions[name].initialValue" class="options input">
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
+                          <input id="column-option-default-numeric-limit" v-model="option.columnOptions[name].limit" class="options input">
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
+                          <select id="column-option-default-numeric-loop" v-model="option.columnOptions[name].loop" class="options select">
+                            <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-if="type instanceof dataTypes.StringType">
+                      <div class="column-option-default-string indent-05">
+                        <div>
+                          <label class="options label" for="column-option-default-string-max-length">Max length:</label>
+                          <input id="column-option-default-string-max-length" v-model="option.columnOptionsDefault.str.maxLength" class="options input">
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
+                          <select id="column-option-default-string-length-in" v-model="option.columnOptionsDefault.str.lengthIn" class="options select">
+                            <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
+                          <input id="column-option-default-string-prefix" class="options input">
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-string-loop">Loop:</label>
+                          <select id="column-option-default-string-loop" v-model="option.columnOptionsDefault.str.loop" class="options select">
+                            <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-if="type instanceof dataTypes.DatetimeType">
+                      <div class="column-option-default-datetime indent-05">
+                        <div>
+                          <label class="options label" for="column-option-default-datetime-initial-value">Initial value:</label>
+                          <input id="column-option-default-datetime-initial-value" v-model="option.columnOptions[name].initialValue" class="options input">
+                        </div>
+                      </div>
+                    </template>
+                    <template v-if="type instanceof dataTypes.BooleanType">
+                      <div class="column-option-default-boolean indent-05">
+                        <div>
+                          <label class="options label" for="column-option-default-boolean-initial-value">Initial value:</label>
+                          <select id="column-option-default-boolean-loop" v-model="option.columnOptions[name].initialValue" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-boolean-random">Random:</label>
+                          <select id="column-option-default-boolean-loop" v-model="option.columnOptions[name].random" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="options label" for="column-option-default-boolean-use-null">Use null:</label>
+                          <select id="column-option-default-boolean-use-null" v-model="option.columnOptions[name].useNull" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          </select>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </div>
-            </template>
-            <template v-if="type instanceof dataTypes.DatetimeType">
-              datetime
-            </template>
-            <template v-if="type instanceof dataTypes.BooleanType">
-              boolean
-            </template>
+            </div>
           </div>
         </div>
       </div>
@@ -186,7 +227,7 @@
       <p>Step3. Click the generate button.</p>
     </div>
     <div class="output-area-button-container">
-      <input type="button" value="Generate" class="pure-button output-area-button" :disabled="!parseDone" @click="onClickGenerate">
+      <button type="button" class="pure-button output-area-button" :disabled="!parseDone" @click="onClickGenerate">Generate</button>
     </div>
     <div class="spacer-1em" />
     <div class="generated-data-container">
@@ -217,16 +258,13 @@ import {
   dataTypes,
   parse,
   CreateTableStatement,
+  CsvFormat,
+  InsertStatementFormat,
 } from '../../../dist';
+import { getOptionByLabel } from '../util';
 // type SetUp = {
 //   option: Ref<UnwrapRef<GeneratorOption>>,
 // };
-const COLUMN_OPTIONS_TYPES = [
-  { clazz: NumericColumnOption, label: 'Numeric type' },
-  { clazz: StringColumnOption, label: 'String type' },
-  { clazz: DatetimeColumnOption, label: 'Datetime type' },
-  { clazz: BooleanColumnOption, label: 'Boolean type' },
-];
 const DDL=`create table "ITEM" (
   id char(10),
   price decimal(10,3),
@@ -286,11 +324,14 @@ export default defineComponent({
         option.value.columnOptions[newName] = new BooleanColumnOption();
       }
     };
+    const OutputFormatOption = [
+      { label: 'Csv',              constructor: () => new CsvFormat(option.value.outputFormat) },
+      { label: 'Insert statement', constructor: () => new InsertStatementFormat },
+    ];
     return {
       ddl,
       option,
       parseDone,
-      COLUMN_OPTIONS_TYPES,
       NUM_LOOP_OPTS,
       STR_LOOP_OPTS,
       LENGTH_IN_OPTS,
@@ -303,6 +344,13 @@ export default defineComponent({
       onClickGenerate,
       onChangeColName,
     };
+  },
+  methods: {
+    onClickAccordion(event: Event) {
+      const el = event.currentTarget as HTMLElement;
+      const container = el.parentElement as HTMLElement;
+      container.classList.toggle("active");
+    },
   },
 });
 </script>
@@ -382,7 +430,26 @@ export default defineComponent({
   height: 2em;
 }
 .column-options-add {
+  margin-left: 1em;
   font-size: 60%;
+}
+.accordion-button {
+  background-color: #fff;
+  color: #444;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+}
+.accordion-panel {
+  max-height: 0px;
+  display: none;
+  transition: max-height 0.2s ease-out;
+}
+.accordion-container.active>.accordion-panel {
+  max-height: none;
+  display: block;
 }
 
 .footer-container {
