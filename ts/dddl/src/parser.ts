@@ -42,7 +42,7 @@ class ColumnOptionDef {
   ) {}
 }
 export class TableConstraint {
-  private _tableConstraint='nominal'
+  public tag = 'TableConstraint'
 }
 export class Unique extends TableConstraint {
   constructor(
@@ -91,7 +91,7 @@ class Eof {
 const EOF = new Eof;
 
 class ParseError extends Error {
-  public readonly parseError='nominal typing';
+  public tag = 'ParseError'
 }
 
 export const parse = (src: string): [CreateTableStatement[],undefined]|[undefined,ParseError]=> {
