@@ -6,13 +6,15 @@ import { logger,max,min,add,subtract } from './util';
 type ColumnOptionUnion = NumericColumnOption|StringColumnOption|DatetimeColumnOption|BooleanColumnOption;
 type GenColOptType = { [columnName: string]: ColumnOptionUnion|FixedValue|undefined };
 type Prefix = string|((col: number, colName: string) => string);
-type Structual<T> = T extends Function | Array<any> ? T : T extends object ? { [K in keyof T]: Structual<T[K]> } : T;
+// type Structual<T> = T extends Function | Array<any> ? T : T extends object ? { [K in keyof T]: Structual<T[K]> } : T;
+type OmitTag<T> = Omit<T, '__tag'>;
+type Param<T> = Partial<OmitTag<T>>;
 
 /** Options for data to be generated. */
-export class GeneratorOption<T extends {} = {}> {
-  public tag = 'GeneratorOption'
+export interface GeneratorOption<T extends {} = {}> {
+  readonly __tag: 'GeneratorOption'
   /** Output format. Either csv or insert statement. */
-  public readonly outputFormat: CsvFormat|InsertStatementFormat = new CsvFormat
+  readonly outputFormat: CsvFormat|InsertStatementFormat
   /**
    *  Options for each column to determine how they are generated.
    *  The options need to be valid types for corresponding columns.
@@ -21,159 +23,163 @@ export class GeneratorOption<T extends {} = {}> {
    *    String types           -> StringColumnOption
    *    Datetime types         -> DatetimeColumnOption
    *    Boolean types          -> BooleanColumnOption
-   *  If you want a fixed value for some columns throughout entire data,
+   *  If you want fixed values for some columns throughout entire rows,
    *  you can specify the value using FixedValue.
    */
-  public readonly columnOptions: GenColOptType = {}
+  readonly columnOptions: GenColOptType
   /**
    * Fall back column option for each column types.
    */
-  public readonly columnOptionsDefault: ColumnOptionDefaultType = { num: new NumericColumnOption, str: new StringColumnOption, date: new DatetimeColumnOption, bool: new BooleanColumnOption }
+  readonly columnOptionsDefault: ColumnOptionDefaultType
   /**
    * A function to manipulate row data after it's generated.
    * The column you can modify is only the column which is set FixValue option.
    */
-  public readonly eachRow?: (columns: ColumnsType, process: RowProcess, prev: T) => [columns: ColumnsType, next: T]
+  readonly eachRow?: (columns: ColumnsType, process: RowProcess, prev: T) => [columns: ColumnsType, next: T]
   /** The number of rows to be generated. Default: 10 */
-  public readonly size: number = 10
-  constructor(obj?: Partial<Structual<GeneratorOption>>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly size: number
 }
+export const newGeneratorOption = (obj?: Param<GeneratorOption>): GeneratorOption => ({
+  outputFormat: newCsvFormat(),
+  columnOptions: {},
+  columnOptionsDefault: { num: newNumericColumnOption(), str: newStringColumnOption(), date: newDatetimeColumnOption(), bool: newBooleanColumnOption() },
+  size: 10,
+  ...obj,
+  __tag: 'GeneratorOption',
+});
 type ColumnOptionDefaultType = { num: NumericColumnOption, str: StringColumnOption, date: DatetimeColumnOption, bool: BooleanColumnOption };
 /** CsvFormat is used for GneratorOption.outputFormat */
-export class CsvFormat {
-  public tag = 'CsvFormat'
+export interface CsvFormat {
+  readonly __tag: 'CsvFormat'
   /** Delimiter of each column. Default: ',' */
-  public readonly delimiter: string = `,`
+  readonly delimiter: string
   /** Quote for each value. Default: '"' */
-  public readonly quote: string = `"`
+  readonly quote: string
   /** Escape sequence. Default: '"' */
-  public readonly escapeSequence: string = `"`
+  readonly escapeSequence: string
   /** Whether output header or not. Default: false */
-  public readonly header: boolean = false
-  /** Define options */
-  constructor(obj?: Partial<CsvFormat>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly header: boolean
 }
 export const newCsvFormat = (obj?: Partial<CsvFormat>): CsvFormat => ({
-  tag: 'CsvFormat',
   delimiter: `,`,
   quote: `"`,
   escapeSequence: `"`,
   header: false,
   ...obj,
+  __tag: 'CsvFormat',
 });
 /** InsertStatementFormat is used for GneratorOption.outputFormat */
-export class InsertStatementFormat {
-  public tag = 'InsertStatementFormat'
+export interface InsertStatementFormat {
+  readonly __tag: 'InsertStatementFormat'
 }
-export const newInsertStatementFormat = (obj?: Partial<InsertStatementFormat>): InsertStatementFormat => ({
-  tag: 'InsertStatementFormat',
+export const newInsertStatementFormat = (obj?: Param<InsertStatementFormat>): InsertStatementFormat => ({
+  ...obj,
+  __tag: 'InsertStatementFormat',
 });
 export const NUM_LOOP_OPTS = ['loop','negate','keep'] as const;
 /** NumericColumnOptions is used for GeneratorOption.columnOptions */
-export class NumericColumnOption {
-  public tag = 'NumericColumnOption'
+export interface NumericColumnOption {
+  readonly __tag: 'NumericColumnOption'
   /** How much advance per each row. Default: 1 for integers, 0.1 for decimals */
-  public readonly stepBy: number = 0
+  readonly stepBy: number
   /** Value of the first row. Default: 1 */
-  public readonly initialValue: number|((col:number)=>number) = 1
-  /** An inner property */
-  public readonly __initialValueNum: number = 1
+  readonly initialValue: number|((col:number)=>number)
+  /** An internal property */
+  readonly __initialValueNum: number
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
-  public readonly limit: number = Infinity
+  readonly limit: number
   /**
    * How to behave when incrementation hits the limit. Default: loop.
    *   loop: back to the initial value and continue to increment
    *   negate: negate the value and continue to increment
    *   keep: stop incrementation and keep the limit value
    */
-  public readonly loop: typeof NUM_LOOP_OPTS[number] = 'loop'
-  constructor(obj?: Omit<Partial<NumericColumnOption>, '__initialValueNum'>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly loop: typeof NUM_LOOP_OPTS[number]
 }
-export const newNumericColumnOption = (obj?: Partial<NumericColumnOption>): NumericColumnOption => ({
-  tag: 'NumericColumnOption',
+export const newNumericColumnOption = (obj?: Omit<Param<NumericColumnOption>, '__initialValueNum'>): NumericColumnOption => ({
   stepBy: 0,
   initialValue: 1,
-  __initialValueNum: 1,
   limit: Infinity,
   loop: 'loop',
   ...obj,
-});
-class IntegerColumnOption extends NumericColumnOption {
-  public tag = 'IntegerColumnOption'
-  constructor(obj?: Partial<IntegerColumnOption>) {
-    super({ ...obj, stepBy: (obj && obj.stepBy) || 1});
-  }
-}
-export const newIntegerColumnOption = (obj?: Partial<IntegerColumnOption>): IntegerColumnOption => ({
-  tag: 'IntegerColumnOption',
-  stepBy: 0,
-  initialValue: 1,
+  __tag: 'NumericColumnOption',
   __initialValueNum: 1,
-  limit: Infinity,
-  loop: 'loop',
-  ...obj,
 });
-class DecimalColumnOption extends NumericColumnOption {
-  public tag = 'DecimalColumnOption'
-  public readonly precision:number=Infinity
-  public readonly scale:number=0
-  /** An inner property */
-  public readonly __maxScale: number = 0
-  constructor(obj?: Partial<DecimalColumnOption>) {
-    super({ ...obj, stepBy: (obj && obj.stepBy) || ((obj && obj.scale && obj.scale > 0 ) ? 0.1 : 1) });
-    const scale1 = (this.__initialValueNum.toString().split('.')[1] || '').length;
-    const scale2 = (this.stepBy.toString().split('.')[1] || '').length;
-    this.__maxScale = max(scale1,scale2);
-  }
+type IntegerColumnOption = OmitTag<NumericColumnOption> & {
+  readonly __tag: 'IntegerColumnOption'
 }
+export const newIntegerColumnOption = (obj?: Param<IntegerColumnOption>): IntegerColumnOption => ({
+  ...newNumericColumnOption({ ...obj, stepBy: (obj && obj.stepBy) || 1 }),
+  __tag: 'IntegerColumnOption',
+});
+type DecimalColumnOption = OmitTag<NumericColumnOption> & {
+  readonly __tag: 'DecimalColumnOption'
+  readonly precision:number,
+  readonly scale:number,
+  /** An internal property */
+  readonly __maxScale: number,
+}
+export const newDecimalColumnOption = (obj?: Param<DecimalColumnOption>): DecimalColumnOption => {
+  const ret: DecimalColumnOption = {
+    ...newNumericColumnOption({ ...obj, stepBy: (obj && obj.stepBy) || ((obj && obj.scale && obj.scale > 0 ) ? 0.1 : 1) }),
+    precision: Infinity,
+    scale: 0,
+    __maxScale: 0,
+    __tag: 'DecimalColumnOption',
+  };
+  const scale1 = (ret.__initialValueNum.toString().split('.')[1] || '').length;
+  const scale2 = (ret.stepBy.toString().split('.')[1] || '').length;
+  const __maxScale = max(scale1,scale2);
+  return { ...ret, __maxScale };
+};
 export const STR_LOOP_OPTS = ['loop','keep'] as const;
 export const LENGTH_IN_OPTS = ['char','byte'] as const;
 /** StringColumnOption is used for GeneratorOption.columnOptions */
-export class StringColumnOption {
-  public tag = 'StringColumnOption'
+export interface StringColumnOption {
+  readonly __tag: 'StringColumnOption',
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
-  public readonly maxLength: number = 0
+  readonly maxLength: number,
   /** Which measurement unit to use, either char or byte. Default: char */
-  public readonly lengthIn: typeof LENGTH_IN_OPTS[number] = 'char'
+  readonly lengthIn: typeof LENGTH_IN_OPTS[number],
   /** Prefix. Default: a character in A-Z, a-z, depending on the column position */
-  public readonly prefix: Prefix = ''
-  /** An inner property */
-  public readonly __prefixStr: string = ''
+  readonly prefix: Prefix,
+  /** An internal property */
+  readonly __prefixStr: string,
   /**
    * How to behave when incrementation hits the limit. Default: loop.
    *   loop: back to the initial value and continue to increment
    *   keep: stop incrementation and keep the limit value
    */
-  public readonly loop?: typeof STR_LOOP_OPTS[number] = 'loop'
-  constructor(obj?: Omit<Partial<StringColumnOption>, '__prefixStr'>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly loop: typeof STR_LOOP_OPTS[number],
 }
-class CharColumnOption extends StringColumnOption {
-  public tag = 'CharColumnOption'
-  constructor(option: Partial<StringColumnOption>) {
-    super({ lengthIn: 'char', ...option });
-  }
+export const newStringColumnOption = (obj?: Omit<Param<StringColumnOption>, '__prefixStr'>): StringColumnOption => ({
+  maxLength: 0,
+  lengthIn: 'char',
+  prefix: '',
+  loop: 'loop',
+  ...obj,
+  __tag: 'StringColumnOption',
+  __prefixStr: '',
+});
+type CharColumnOption = OmitTag<StringColumnOption> & {
+  readonly __tag: 'CharColumnOption'
 }
-class BinaryColumnOption extends StringColumnOption {
-  public tag = 'BinaryColumnOption'
-  constructor(option: Partial<StringColumnOption>) {
-    super({ lengthIn: 'byte', ...option });
-  }
+export const newCharColumnOption = (obj?: Param<CharColumnOption>): CharColumnOption => ({
+  ...newStringColumnOption(obj),
+  __tag: 'CharColumnOption',
+  lengthIn: 'char',
+});
+type BinaryColumnOption = OmitTag<StringColumnOption> & {
+  readonly __tag: 'BinaryColumnOption'
 }
+export const newBinaryColumnOption = (obj?: Param<BinaryColumnOption>): BinaryColumnOption => ({
+  ...newStringColumnOption(obj),
+  __tag: 'BinaryColumnOption',
+  lengthIn: 'byte',
+});
 /** DatetimeColumnOption is used for GeneratorOption.columnOptions */
-export class DatetimeColumnOption {
-  public tag = 'DatetimeColumnOption'
+export interface DatetimeColumnOption {
+  readonly __tag: 'DatetimeColumnOption',
   /**
    * Value of the first row.
    * Default: 1970-01-01T00:00:00.000Z. Output depends on their column types, as shown below.
@@ -181,7 +187,7 @@ export class DatetimeColumnOption {
    *   Time      : '00:00:00'
    *   Timestamp : '1970-01-01 00:00:00'
    */
-  public readonly initialValue: Date = new Date(0)
+  readonly initialValue: Date,
   /**
    *  DatetimeColumnOption is used for GeneratorOption.columnOptions
    *   Currently this option is not supported yet, so the increment step can't be changed.
@@ -190,53 +196,66 @@ export class DatetimeColumnOption {
    *     Time           : 1 second.
    *     Timestamp type : 1 day.
    */
-  public readonly stepBy: number = 1
-  constructor(obj?: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly stepBy: number,
 }
-class DateColumnOption extends DatetimeColumnOption {
-  public tag = 'DateColumnOption'
-  constructor(obj: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
-    super(obj);
-  }
+export const newDatetimeColumnOption = (obj?: Param<Omit<DatetimeColumnOption, 'stepBy'>>): DatetimeColumnOption => ({
+  initialValue: new Date(0),
+  stepBy: 1,
+  ...obj,
+  __tag: 'DatetimeColumnOption',
+});
+type DateColumnOption = OmitTag<DatetimeColumnOption> & {
+  /** An internal property */
+  readonly __tag: 'DateColumnOption'
 }
-class TimeColumnOption extends DatetimeColumnOption {
-  public tag = 'TimeColumnOption'
-  constructor(obj: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
-    super(obj);
-  }
+export const newDateColumnOption = (obj?: Param<Omit<DateColumnOption, 'stepBy'>>): DateColumnOption => ({
+  ...newDatetimeColumnOption(obj),
+  __tag: 'DateColumnOption',
+});
+type TimeColumnOption = OmitTag<DatetimeColumnOption> & {
+  /** An internal property */
+  readonly __tag: 'TimeColumnOption'
 }
-class TimestampColumnOption extends DatetimeColumnOption {
-  public tag = 'TimestampColumnOption'
-  constructor(obj: Omit<Partial<DatetimeColumnOption>, 'stepBy'>) {
-    super(obj);
-  }
+export const newTimeColumnOption = (obj?: Param<Omit<TimeColumnOption, 'stepBy'>>): TimeColumnOption => ({
+  ...newDatetimeColumnOption(obj),
+  __tag: 'TimeColumnOption',
+});
+type TimestampColumnOption = OmitTag<DatetimeColumnOption> & {
+  /** An internal property */
+  readonly __tag: 'TimestampColumnOption'
 }
+export const newTimestampColumnOption = (obj?: Param<Omit<TimestampColumnOption, 'stepBy'>>): TimestampColumnOption => ({
+  ...newDatetimeColumnOption(obj),
+  __tag: 'TimestampColumnOption',
+});
 /** BooleanColumnOption is used for GeneratorOption.columnOptions */
-export class BooleanColumnOption {
-  public tag = 'BooleanColumnOption'
+export interface BooleanColumnOption {
+  readonly __tag: 'BooleanColumnOption',
   /** Value of the first row. Default: false */
-  public readonly initialValue: boolean = false
+  readonly initialValue: boolean,
   /** Whether randomly generate data or not. Default: false */
-  public readonly random: boolean = false
+  readonly random: boolean,
   /** Whether use null value or not. If table column has not-null constraint, this option is ignored. Default: false */
-  public readonly useNull: boolean = false
-  constructor(obj?: Partial<BooleanColumnOption>) {
-    if (!obj) return;
-    Object.assign(this,obj);
-  }
+  readonly useNull: boolean,
 }
+export const newBooleanColumnOption = (obj?: Param<BooleanColumnOption>): BooleanColumnOption => ({
+  initialValue: false,
+  random: false,
+  useNull: false,
+  ...obj,
+  __tag: 'BooleanColumnOption',
+});
 /** FixedValue is use for GneratorOption.columnOptions */
-export class FixedValue {
-  public tag = 'FixedValue'
-  constructor(
-    /** The value to be set to a column */
-    public readonly value: string = '',
-  ) {}
+export interface FixedValue {
+  /** An internal property */
+  readonly __tag: 'FixedValue'
+  /** The value to be set to a column */
+  readonly value: string;
 }
-
+export const newFixedValue = (obj: Omit<FixedValue, '__tag'>): FixedValue => ({
+  ...obj,
+  __tag: 'FixedValue',
+});
 type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
 type KeysInUseType = { [keyName: string]: string[] };
 type NameIdx={[key:string]:number};
@@ -308,63 +327,63 @@ export async function* parseAndGenerate(src: string, option?: GeneratorOption): 
  *    L3 "a0003","3","0.3","b0000003"
  *    L4 "a0004","4","0.4","b0000004"
  */
-export async function* generate(statement: CreateTableStatement, option: GeneratorOption = new GeneratorOption):
+export async function* generate(statement: CreateTableStatement, option: GeneratorOption = newGeneratorOption()):
   AsyncGenerator<[GeneratorResult, GeneratorValidationError[]], void, undefined> {
   const columnDefs = statement.columns;
   let prevColumns: ColumnsType = {num:[],str:[],date:[],bool:[],fixed:[]};
   let strPrefixCodePoint:number=65;
-  type AvailableOptionUnion = IntegerColumnOption|DecimalColumnOption|CharColumnOption|BinaryColumnOption|DatetimeColumnOption|BooleanColumnOption|FixedValue;
+  type AvailableOptionUnion = IntegerColumnOption|DecimalColumnOption|CharColumnOption|BinaryColumnOption|DateColumnOption|TimeColumnOption|TimestampColumnOption|BooleanColumnOption|FixedValue;
   const opts: AvailableOptionUnion[] = columnDefs.map((def,i) => {
     const colOption = option.columnOptions[def.name.value];
-    if (colOption && colOption.tag === 'FixedValue') return colOption;
+    if (colOption && colOption.__tag === 'FixedValue') return colOption;
     const dataType = def.dataType;
     let opt;
     if (dataType instanceof types.NumericType) {
-      if (colOption && !(colOption instanceof NumericColumnOption)) throw new GeneratorFatalError('invalid column option');
+      if (colOption && !(colOption.__tag === 'NumericColumnOption')) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: NumericColumnOption = colOption || option.columnOptionsDefault.num;
       const __initialValueNum = typeof nonNullOpt.initialValue === 'function' ? nonNullOpt.initialValue(i) : nonNullOpt.initialValue;
       if (dataType instanceof types.Float) {
         let limit = dataType.precision ? +('9'.repeat(dataType.precision)) : Infinity;
         limit = min(limit, nonNullOpt.limit);
-        opt = new DecimalColumnOption({ precision: dataType.precision, ...nonNullOpt, __initialValueNum, limit });
+        opt = newDecimalColumnOption({ precision: dataType.precision, ...nonNullOpt, __initialValueNum, limit });
         prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt.__maxScale);
       } else if (dataType instanceof types.DecimalType) {
         let limit = dataType.precision ? +('9'.repeat(dataType.precision - (dataType.scale || 0))) : Infinity;
         limit = min(limit, nonNullOpt.limit);
         logger.log('stepBy', nonNullOpt.stepBy);
-        opt = new DecimalColumnOption({ precision: dataType.precision, scale: dataType.scale, ...nonNullOpt, __initialValueNum, limit });
+        opt = newDecimalColumnOption({ precision: dataType.precision, scale: dataType.scale, ...nonNullOpt, __initialValueNum, limit });
         logger.log('stepBy', opt.stepBy);
       } else {
-        opt = new IntegerColumnOption(colOption);
+        opt = newIntegerColumnOption({...nonNullOpt, __initialValueNum});
         prevColumns.num[i]=opt.__initialValueNum - opt.stepBy;
       }
-      prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt instanceof DecimalColumnOption ? opt.__maxScale : 0);
+      prevColumns.num[i]=subtract(opt.__initialValueNum, opt.stepBy, opt.__tag === 'DecimalColumnOption' ? opt.__maxScale : 0);
     } else if (dataType instanceof types.StringType) {
-      if (colOption && !(colOption instanceof StringColumnOption)) throw new GeneratorFatalError('invalid column option');
+      if (colOption && !(colOption.__tag === 'StringColumnOption')) throw new GeneratorFatalError('invalid column option');
       const isChar = dataType instanceof types.CharacterStringType;
       const nonNullOpt: StringColumnOption = colOption || option.columnOptionsDefault.str;
       const maxLength = nonNullOpt.maxLength || dataType.length || 10; // There is no basis for 10 but we need a concrete integer value.
       logger.log('maxLength', dataType.length);
       let __prefixStr = typeof nonNullOpt.prefix === 'function' ? nonNullOpt.prefix(i,def.name.value) : nonNullOpt.prefix;
       if (!__prefixStr) __prefixStr=String.fromCodePoint(strPrefixCodePoint++);
-      opt = isChar ? new CharColumnOption({...colOption, maxLength, __prefixStr}) :
-                     new BinaryColumnOption({...colOption, maxLength, __prefixStr});
+      opt = isChar ? newCharColumnOption({...nonNullOpt, maxLength, __prefixStr}) :
+                     newBinaryColumnOption({...nonNullOpt, maxLength, __prefixStr});
       const initialValue:string = __prefixStr.slice(0,maxLength-1) + '0'.repeat(max(maxLength - __prefixStr.length, 1));
       logger.log('initialValue', initialValue);
       logger.log('maxLength', maxLength);
       prevColumns.str[i]=initialValue;
     } else if (dataType instanceof types.DatetimeType) {
-      if (colOption && !(colOption instanceof DatetimeColumnOption)) throw new GeneratorFatalError('invalid column option');
+      if (colOption && !(colOption.__tag === 'DatetimeColumnOption')) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: DatetimeColumnOption = colOption || option.columnOptionsDefault.date;
-      opt = dataType instanceof types.Date ? new DateColumnOption({ ...nonNullOpt }) :
-            dataType instanceof types.Time ? new TimeColumnOption({ ...nonNullOpt }) :
-                                             new TimestampColumnOption({ ...nonNullOpt });
+      opt = dataType instanceof types.Date ? newDateColumnOption({ ...nonNullOpt }) :
+            dataType instanceof types.Time ? newTimeColumnOption({ ...nonNullOpt }) :
+                                             newTimestampColumnOption({ ...nonNullOpt });
       prevColumns.date[i]= dataType instanceof types.Time ? opt.initialValue : new Date(nonNullOpt.initialValue.getTime() - 24*60*60*1000);
     } else if (dataType instanceof types.BooleanType) {
-      if (colOption && !(colOption instanceof BooleanColumnOption)) throw new GeneratorFatalError('invalid column option');
+      if (colOption && !(colOption.__tag === 'BooleanColumnOption')) throw new GeneratorFatalError('invalid column option');
       const nonNullOpt: BooleanColumnOption = colOption || option.columnOptionsDefault.bool;
       const useNull = def.options.some(o => o instanceof co.NotNull);
-      opt = new BooleanColumnOption({ ...nonNullOpt, useNull });
+      opt = newBooleanColumnOption({ ...nonNullOpt, useNull });
       prevColumns.bool[i]=!opt.initialValue;
     } else {
       throw new GeneratorFatalError('invalid data type');
@@ -400,7 +419,7 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     return keysSet;
   })();
   const tableName = statement.name.value.map(ident=>ident.value).join('.');
-  if (option.outputFormat instanceof CsvFormat && option.outputFormat.header) {
+  if (option.outputFormat.__tag === 'CsvFormat' && option.outputFormat.header) {
     const colNames = columnDefs.map(col => col.name.value);
     const header = colNames.join(',');
     yield [{ columns: colNames, row: header }, [] ];
@@ -425,11 +444,11 @@ export async function* generate(statement: CreateTableStatement, option: Generat
         col: j,
       };
       const opt = opts[j];
-      if (opt instanceof NumericColumnOption) columns.num[j]=(generateNumeric(colProcess, opt));
-      if (opt instanceof StringColumnOption) columns.str[j]=(generateString(colProcess, opt));
-      if (opt instanceof DatetimeColumnOption) columns.date[j]=(generateDatetime(colProcess, opt));
-      if (opt instanceof BooleanColumnOption) columns.bool[j]=(generateBoolean(colProcess, opt));
-      if (opt instanceof FixedValue) columns.fixed[j]=opt.value;
+      if (opt.__tag === 'IntegerColumnOption' || opt.__tag === 'DecimalColumnOption') columns.num[j]=(generateNumeric(colProcess, opt));
+      if (opt.__tag === 'CharColumnOption' || opt.__tag === 'BinaryColumnOption') columns.str[j]=(generateString(colProcess, opt));
+      if (opt.__tag === 'DateColumnOption' || opt.__tag === 'TimeColumnOption' || opt.__tag === 'TimestampColumnOption') columns.date[j]=(generateDatetime(colProcess, opt));
+      if (opt.__tag === 'BooleanColumnOption') columns.bool[j]=(generateBoolean(colProcess, opt));
+      if (opt.__tag === 'FixedValue') columns.fixed[j]=opt.value;
     }
     if (rowProcess && option.eachRow) {
       const [editedColumns] = [,work] = option.eachRow(columns, rowProcess, work);
@@ -448,32 +467,32 @@ export async function* generate(statement: CreateTableStatement, option: Generat
     for(let j=0; j<opts.length; j++) {
       const opt = opts[j];
       columnsStr[j] = (() => {
-        if (opt instanceof NumericColumnOption) return columns.num[j].toString();
-        if (opt instanceof StringColumnOption) return columns.str[j];
+        if (opt.__tag === 'IntegerColumnOption' || opt.__tag === 'DecimalColumnOption') return columns.num[j].toString();
+        if (opt.__tag === 'CharColumnOption' || opt.__tag === 'BinaryColumnOption') return columns.str[j];
         const date=columns.date[j];
-        if (opt instanceof DateColumnOption) return date.toISOString().slice(0,10);
-        if (opt instanceof TimeColumnOption) return `${Math.floor(date.getTime() / (60*60*1000)) + date.getUTCHours()}:${date.getUTCMinutes()}:${date.getUTCSeconds()}`;
-        if (opt instanceof TimestampColumnOption) return date.toISOString().slice(0,19).replace('T',' ');
+        if (opt.__tag === 'DateColumnOption') return date.toISOString().slice(0,10);
+        if (opt.__tag === 'TimeColumnOption') return `${Math.floor(date.getTime() / (60*60*1000)) + date.getUTCHours()}:${date.getUTCMinutes()}:${date.getUTCSeconds()}`;
+        if (opt.__tag === 'TimestampColumnOption') return date.toISOString().slice(0,19).replace('T',' ');
         const bool=columns.bool[j];
-        if (opt instanceof BooleanColumnOption) return bool === undefined ? bool : bool.toString();
+        if (opt.__tag === 'BooleanColumnOption') return bool === undefined ? bool : bool.toString();
         const fixed=columns.fixed[j];
         return fixed ? fixed : 'null';
       })();
     }
     const [,errs] = [keysInUse] = validateRow(rowProcess, columnsStr);
     if (errs) errors.push(...errs);
-    const row = option.outputFormat instanceof CsvFormat ? toCsv(columnsStr, option.outputFormat) : toInsert(columnsStr, tableName);
+    const row = option.outputFormat.__tag === 'CsvFormat' ? toCsv(columnsStr, option.outputFormat) : toInsert(columnsStr, tableName);
     prevColumns=columns;
     yield [{ columns: columnsStr, row }, errors];
   }
 }
 
 // TODO negative step
-const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): number => {
+const generateNumeric = (process: ColumnProcess, option: IntegerColumnOption|DecimalColumnOption): number => {
   const prev=process.prevColumns.num[process.col];
-  const maxScale = option instanceof DecimalColumnOption ? option.__maxScale : 0;
+  const maxScale = option.__tag === 'DecimalColumnOption' ? option.__maxScale : 0;
   logger.log('add', prev, option.stepBy, maxScale);
-  const next = add(prev, option.stepBy, option instanceof DecimalColumnOption ? option.__maxScale : 0);
+  const next = add(prev, option.stepBy, option.__tag === 'DecimalColumnOption' ? option.__maxScale : 0);
   if (next > option.limit) { // overflow
     return option.loop === 'loop'   ? option.__initialValueNum :
            option.loop === 'negate' ? -prev:
@@ -481,7 +500,7 @@ const generateNumeric = (process: ColumnProcess, option: NumericColumnOption): n
   }
   return next;
 };
-const generateString = (process: ColumnProcess, option: StringColumnOption): string => {
+const generateString = (process: ColumnProcess, option: CharColumnOption|BinaryColumnOption): string => {
   const prev=process.prevColumns.str[process.col];
   let seq=parseInt(prev.slice(option.__prefixStr.length))+1;
   if (option.maxLength !== Infinity && seq > +('9'.repeat(option.maxLength - option.__prefixStr.length))) { // overflow
@@ -489,9 +508,9 @@ const generateString = (process: ColumnProcess, option: StringColumnOption): str
   }
   return option.__prefixStr + '0'.repeat(option.maxLength - option.__prefixStr.length - seq.toString().length) + seq;
 };
-const generateDatetime = (process: ColumnProcess, option: DatetimeColumnOption): Date => {
+const generateDatetime = (process: ColumnProcess, option: DateColumnOption|TimeColumnOption|TimestampColumnOption): Date => {
   const prev=process.prevColumns.date[process.col];
-  if (option instanceof TimeColumnOption) {
+  if (option.__tag === 'TimeColumnOption') {
     return new Date(prev.getTime()+(option.stepBy*1000)); // advance by seconds
   } else {
     return new Date(prev.getTime()+(option.stepBy*24*60*60*1000)); // advance by days
