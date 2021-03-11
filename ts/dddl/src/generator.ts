@@ -84,8 +84,6 @@ export interface NumericColumnOption {
   readonly stepBy: number
   /** Value of the first row. Default: 1 */
   readonly initialValue: number|((col:number)=>number)
-  /** An internal property */
-  readonly __initialValueNum: number
   /** Limit of incrementation. Default: depend on the corresponding table data type. */
   readonly limit: number
   /**
@@ -103,13 +101,15 @@ export const newNumericColumnOption = (obj?: Omit<Param<NumericColumnOption>, '_
   loop: 'loop',
   ...obj,
   __tag: 'NumericColumnOption',
-  __initialValueNum: 1,
 });
 type IntegerColumnOption = OmitTag<NumericColumnOption> & {
   readonly __tag: 'IntegerColumnOption'
+  /** An internal property */
+  readonly __initialValueNum: number
 }
 export const newIntegerColumnOption = (obj?: Param<IntegerColumnOption>): IntegerColumnOption => ({
   ...newNumericColumnOption({ ...obj, stepBy: (obj && obj.stepBy) || 1 }),
+  __initialValueNum: obj?.__initialValueNum || 1,
   __tag: 'IntegerColumnOption',
 });
 type DecimalColumnOption = OmitTag<NumericColumnOption> & {
@@ -118,12 +118,15 @@ type DecimalColumnOption = OmitTag<NumericColumnOption> & {
   readonly scale:number,
   /** An internal property */
   readonly __maxScale: number,
+  /** An internal property */
+  readonly __initialValueNum: number
 }
 export const newDecimalColumnOption = (obj?: Param<DecimalColumnOption>): DecimalColumnOption => {
   const ret: DecimalColumnOption = {
     ...newNumericColumnOption({ ...obj, stepBy: (obj && obj.stepBy) || ((obj && obj.scale && obj.scale > 0 ) ? 0.1 : 1) }),
     precision: Infinity,
     scale: 0,
+    __initialValueNum: obj?.__initialValueNum || 1,
     __maxScale: 0,
     __tag: 'DecimalColumnOption',
   };
@@ -143,8 +146,6 @@ export interface StringColumnOption {
   readonly lengthIn: typeof LENGTH_IN_OPTS[number],
   /** Prefix. Default: a character in A-Z, a-z, depending on the column position */
   readonly prefix: Prefix,
-  /** An internal property */
-  readonly __prefixStr: string,
   /**
    * How to behave when incrementation hits the limit. Default: loop.
    *   loop: back to the initial value and continue to increment
@@ -159,23 +160,28 @@ export const newStringColumnOption = (obj?: Omit<Param<StringColumnOption>, '__p
   loop: 'loop',
   ...obj,
   __tag: 'StringColumnOption',
-  __prefixStr: '',
 });
 type CharColumnOption = OmitTag<StringColumnOption> & {
   readonly __tag: 'CharColumnOption'
+  /** An internal property */
+  readonly __prefixStr: string,
 }
 export const newCharColumnOption = (obj?: Param<CharColumnOption>): CharColumnOption => ({
   ...newStringColumnOption(obj),
+  lengthIn: obj?.lengthIn || 'char',
+  __prefixStr: obj?.__prefixStr || '',
   __tag: 'CharColumnOption',
-  lengthIn: 'char',
 });
 type BinaryColumnOption = OmitTag<StringColumnOption> & {
   readonly __tag: 'BinaryColumnOption'
+  /** An internal property */
+  readonly __prefixStr: string,
 }
 export const newBinaryColumnOption = (obj?: Param<BinaryColumnOption>): BinaryColumnOption => ({
   ...newStringColumnOption(obj),
+  lengthIn: obj?.lengthIn || 'byte',
+  __prefixStr: obj?.__prefixStr || '',
   __tag: 'BinaryColumnOption',
-  lengthIn: 'byte',
 });
 /** DatetimeColumnOption is used for GeneratorOption.columnOptions */
 export interface DatetimeColumnOption {
