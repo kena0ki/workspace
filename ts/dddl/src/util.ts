@@ -26,14 +26,14 @@ export const length = (str: string): number => str.replace(surrogatePairs,' ').l
 // dirty hack for calculation of floating point number.
 // TODO overflow
 export const add = (left:number, right:number, scale:number): number => {
-  if (scale <= 0) return left+right;
-  const coefficient=10**scale;
-  return ((left*coefficient)+(right*coefficient))/coefficient;
+  if (scale <= 0) return (+left)+(+right);
+  const digits=10**scale;
+  return ((left*digits)+(right*digits))/digits;
 };
 export const subtract = (left:number, right:number, scale:number): number => {
   if (scale <= 0) return left-right;
-  const coefficient=10**scale;
-  return ((left*coefficient)-(right*coefficient))/coefficient;
+  const digits=10**scale;
+  return ((left*digits)-(right*digits))/digits;
 };
 
 export * from './util';
