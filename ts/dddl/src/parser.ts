@@ -1,4 +1,4 @@
-import { token as tk, Token, TokenSet } from './tokenizer';
+import { token as tk, Token, TokenSet, TokenizeError } from './tokenizer';
 import { dataTypes as types, DataType } from './data-types';
 import { keywords, Keyword } from './keywords';
 import { exprs, Expr } from './expressions';
@@ -90,12 +90,18 @@ class Eof {
 }
 const EOF = new Eof;
 
-class ParseError extends Error {
+export class ParseError extends Error {
   public tag = 'ParseError'
 }
 
-export const parse = (src: string): [CreateTableStatement[],undefined]|[undefined,ParseError]=> {
-  const tokenSet = tk.tokenize(src);
+export const parse = (src: string): CreateTableStatement[]|ParseError => {
+  const result = tk.tokenize(src);
+  if (result instanceof TokenizeError) {
+    const err = new ParseError(result.message);
+    err.stack = result.stack;
+    return err;
+  }
+  const tokenSet = result;
   const statements: CreateTableStatement[] = [];
   let expectingStatementDelimiter = false;
   let idx: number = 0;
@@ -108,7 +114,7 @@ export const parse = (src: string): [CreateTableStatement[],undefined]|[undefine
         expectingStatementDelimiter=false;
       }
       if(peekToken(tokenSet, idx) instanceof Eof) break; // EOF
-      if(expectingStatementDelimiter) return [undefined, unexpectedToken(tokenSet, idx, 'end of statement')];
+      if(expectingStatementDelimiter) return unexpectedToken(tokenSet, idx, 'end of statement');
       const [,stmt] = [idx] = parseCreateStatement(tokenSet, idx);
       statements.push(stmt);
       logger.log(stmt,idx);
@@ -116,10 +122,10 @@ export const parse = (src: string): [CreateTableStatement[],undefined]|[undefine
   } catch (err: unknown) {
     logger.log(tokenSet, idx);
     logger.log(err);
-    if (err instanceof ParseError) return [undefined, err];
+    if (err instanceof ParseError) return err;
     throw err;
   }
-  return [statements,undefined];
+  return statements;
 };
 const parseCreateStatement = (tokenSet: TokenSet, start: number): ParseResult<CreateTableStatement> => {
   let idx=start;

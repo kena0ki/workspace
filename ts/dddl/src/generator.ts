@@ -1,4 +1,4 @@
-import { CreateTableStatement, TableConstraint, parser } from './parser';
+import { CreateTableStatement, TableConstraint, parser, ParseError } from './parser';
 import { dataTypes as types } from './data-types';
 import { columnOptions as co } from './column-options';
 import { logger,max,min,add,subtract } from './util';
@@ -296,8 +296,9 @@ export class GeneratorValidationError extends Error {
 export type GeneratorResult = { columns: (string|undefined)[], row: string };
 
 export async function tryParseAndGenerate(src: string, option?: GeneratorOption): Promise<string[]> {
-  const [stmts,error] = parser.parse(src);
-  if (!stmts) throw error;
+  const result = parser.parse(src);
+  if (result instanceof ParseError) throw result;
+  const stmts = result;
   const rows:string[]=[];
   for (const stmt of stmts) {
     for await (const [result, errors] of generate(stmt, option)) {
@@ -308,8 +309,9 @@ export async function tryParseAndGenerate(src: string, option?: GeneratorOption)
   return rows;
 }
 export async function* parseAndGenerate(src: string, option?: GeneratorOption): AsyncGenerator<[GeneratorResult, GeneratorValidationError[]], void, undefined> {
-  const [stmts,error] = parser.parse(src);
-  if (!stmts) throw error;
+  const result = parser.parse(src);
+  if (result instanceof ParseError) throw result;
+  const stmts = result;
   for (const stmt of stmts) {
     for await (const result of generate(stmt, option)) {
       yield result;

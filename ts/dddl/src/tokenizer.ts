@@ -147,7 +147,7 @@ class InnerError extends Error {
   public readonly innerError = 'nominal typing';
   constructor(_message:string) { super(_message); }
 }
-class TokenizeError extends Error {
+export class TokenizeError extends Error {
   constructor(public readonly cause: InnerError, public readonly row: number, public readonly  col: number){
     super(`Tokenize error at row: ${row}, column: ${col}. ${cause.message}`);
     this.stack = cause.stack;
@@ -185,7 +185,7 @@ export const getTokenLocation = (tokenSet: TokenSet, idx: number=Infinity): [row
   return [row,col];
 };
 
-export const tokenize = (src: string): TokenSet => {
+export const tokenize = (src: string): TokenSet|TokenizeError => {
   const chars = Array.from(src);
   const tokenSet: TokenSet = new TokenSet();
   let i=0;
@@ -210,7 +210,7 @@ export const tokenize = (src: string): TokenSet => {
         const [row, col] = getTokenLocation(tokenSet);
         const e = new TokenizeError(err as InnerError, row, col); // TODO undesirable type assertion due to the ts-node issue above
         logger.log(e.stack);
-        throw e;
+        return e;
       }
       throw err;
     }

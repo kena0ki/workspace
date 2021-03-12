@@ -15,12 +15,13 @@
     <p class="instruction">Step1. Input a create statement here.</p>
     <form class="options-form pure-form">
       <div class="input-area-create-statement-container">
-        <textarea v-model="ddl" class="input-area-create-statement" />
+        <textarea v-model="ddl" class="input-area-create-statement" :placeholder="PLACEHOLDER_DDL" />
       </div>
       <div class="spacer-1em" />
       <div class="input-area-button-container">
         <button type="button" class="pure-button output-area-button" @click="onClickParse">Parse</button>
       </div>
+      <div v-if="parseMessageType" :class="{ [parseMessageType]: true }">{{ parseMessage }}</div>
     </form>
   </div>
   <div class="spacer-1em" />
@@ -33,10 +34,16 @@
     <form class="options-form pure-form">
       <div class="accordion-container">
         <button type="button" class="accordion-button" :disabled="!parseDone" @click="onClickAccordion($event)">
-          <h3 class="general-options-header accordion" @click="onClickAccordion($event)">> General options</h3>
+          <h3 class="general-options-header accordion">
+            <span class="accordion-arrow">ᐅ</span> Generator options
+          </h3>
         </button>
         <div class="accordion-panel">
           <div class="general-options indent-05 panel">
+            <div class="options-size">
+              <label class="options label" for="options-size">Data size:</label>
+              <input id="options-size" v-model="genOpt.size" class="options input" type="number" step="any" max="100">
+            </div>
             <div class="options-output-format">
               <label class="options label" for="options-output-format">Output format:</label>
               <select id="options-output-format" class="options select" @change="onChangeOutputFormat($event.currentTarget.value)">
@@ -67,7 +74,7 @@
             </div>
             <div class="accordion-container">
               <button type="button" class="accordion-button" @click="onClickAccordion($event)">
-                <h4 class="accordion">> Column option by type</h4>
+                <h4 class="accordion"><span class="accordion-arrow">ᐅ</span> Column options by type</h4>
               </button>
               <div class="accordion-panel">
                 <div class="column-option-default indent-05 panel">
@@ -75,15 +82,15 @@
                   <div class="column-option-default-numeric indent-05">
                     <div>
                       <label class="options label" for="column-option-default-numeric-step">Step:</label>
-                      <input id="column-option-default-numeric-step" v-model="genOpt.columnOptionsDefault.num.stepBy" class="options input">
+                      <input id="column-option-default-numeric-step" v-model="genOpt.columnOptionsDefault.num.stepBy" type="number" step="any" class="options input">
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
-                      <input id="column-option-default-numeric-initial-value" v-model="genOpt.columnOptionsDefault.num.initialValue" class="options input">
+                      <input id="column-option-default-numeric-initial-value" v-model="genOpt.columnOptionsDefault.num.initialValue" type="number" step="any" class="options input">
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
-                      <input id="column-option-default-numeric-limit" v-model="genOpt.columnOptionsDefault.num.limit" class="options input">
+                      <input id="column-option-default-numeric-limit" v-model="genOpt.columnOptionsDefault.num.limit" type="number" step="any" class="options input">
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
@@ -96,7 +103,7 @@
                   <div class="column-option-default-string indent-05">
                     <div>
                       <label class="options label" for="column-option-default-string-max-length">Max length:</label>
-                      <input id="column-option-default-string-max-length" v-model="genOpt.columnOptionsDefault.str.maxLength" class="options input">
+                      <input id="column-option-default-string-max-length" v-model="genOpt.columnOptionsDefault.str.maxLength" type="number" class="options input">
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
@@ -106,7 +113,7 @@
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
-                      <input id="column-option-default-string-prefix" class="options input">
+                      <input id="column-option-default-string-prefix" v-model="genOpt.columnOptionsDefault.str.prefix" class="options input">
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-string-loop">Loop:</label>
@@ -118,8 +125,13 @@
                   <h5>Datetime type</h5>
                   <div class="column-option-default-datetime indent-05">
                     <div>
-                      <label class="options label" for="column-option-default-datetime-initial-value">Initial value:</label>
-                      <input id="column-option-default-datetime-initial-value" v-model="genOpt.columnOptionsDefault.date.initialValue" class="options input">
+                      <label class="options label" for="column-option-default-datetime-initial-value-date">Initial value:</label>
+                      <input id="column-option-default-datetime-initial-value-date" :value="genOpt.columnOptionsDefault.date.initialValue?.toISOString().slice(0,10)"
+                             type="date" class="options input" @change="onChangeDefaultOptionsInitialDateValue($event.currentTarget.value)"
+                      >
+                      <input id="column-option-default-datetime-initial-value-time" :value="genOpt.columnOptionsDefault.date.initialValue?.toISOString().slice(11,19)"
+                             type="time" step="1" class="options input" @change="onChangeDefaultOptionsInitialTimeValue($event.currentTarget.value)"
+                      >
                     </div>
                   </div>
                   <h5>Boolean type</h5>
@@ -127,19 +139,19 @@
                     <div>
                       <label class="options label" for="column-option-default-boolean-initial-value">Initial value:</label>
                       <select id="column-option-default-boolean-loop" v-model="genOpt.columnOptionsDefault.bool.initialValue" class="options select">
-                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                        <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                       </select>
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-boolean-random">Random:</label>
                       <select id="column-option-default-boolean-loop" v-model="genOpt.columnOptionsDefault.bool.random" class="options select">
-                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                        <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                       </select>
                     </div>
                     <div>
                       <label class="options label" for="column-option-default-boolean-use-null">Use null:</label>
                       <select id="column-option-default-boolean-use-null" v-model="genOpt.columnOptionsDefault.bool.useNull" class="options select">
-                        <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                        <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                       </select>
                     </div>
                   </div>
@@ -148,11 +160,9 @@
             </div>
             <div class="accordion-container">
               <button type="button" class="accordion-button" @click="onClickAccordion($event)">
-                <h4 class="accordion">
-                  > Column option
-                </h4>
+                <h4 class="accordion"><span class="accordion-arrow">ᐅ</span> Column options by name</h4>
               </button>
-              <button type="button" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">+</button>
+              <button type="button" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">✚</button>
               <div class="accordion-panel">
                 <div class="column-options indent-05">
                   <div v-for="(name,nameIdx) in colNameInUse" :key="nameIdx" :set="type = columnDefs.find(def => def.colName === name)?.type">
@@ -160,78 +170,84 @@
                     <select id="options-column-options-column-name" :value="colNameInUse[nameIdx]" class="options select" @change="onChangeColName(nameIdx, $event)">
                       <option v-for="(opt) in columnDefs.filter(def => (!colNameInUse.includes(def.colName) || def.colName === name))" :key="opt">{{ opt.colName }}</option>
                     </select>
+                    <button type="button" class="pure-button input-area-button column-options-del" @click="onClickDelColOpt(name, nameIdx)">✖</button>
                     <template v-if="type instanceof dataTypes.NumericType">
-                      <div class="column-option-default-numeric indent-05">
+                      <div class="column-option-numeric indent-05">
                         <div>
-                          <label class="options label" for="column-option-default-numeric-step">Step:</label>
-                          <input id="column-option-default-numeric-step" v-model="genOpt.columnOptions[name].stepBy" class="options input">
+                          <label class="options label" for="column-option-numeric-step">Step:</label>
+                          <input id="column-option-numeric-step" v-model="genOpt.columnOptions[name].stepBy" class="options input">
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-numeric-initial-value">Initial value:</label>
-                          <input id="column-option-default-numeric-initial-value" v-model="genOpt.columnOptions[name].initialValue" class="options input">
+                          <label class="options label" for="column-option-numeric-initial-value">Initial value:</label>
+                          <input id="column-option-numeric-initial-value" v-model="genOpt.columnOptions[name].initialValue" class="options input">
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-numeric-limit">Limit:</label>
-                          <input id="column-option-default-numeric-limit" v-model="genOpt.columnOptions[name].limit" class="options input">
+                          <label class="options label" for="column-option-numeric-limit">Limit:</label>
+                          <input id="column-option-numeric-limit" v-model="genOpt.columnOptions[name].limit" class="options input">
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-numeric-loop">Loop:</label>
-                          <select id="column-option-default-numeric-loop" v-model="genOpt.columnOptions[name].loop" class="options select">
+                          <label class="options label" for="column-option-numeric-loop">Loop:</label>
+                          <select id="column-option-numeric-loop" v-model="genOpt.columnOptions[name].loop" class="options select">
                             <option v-for="opt in NUM_LOOP_OPTS" :key="opt">{{ opt }}</option>
                           </select>
                         </div>
                       </div>
                     </template>
                     <template v-if="type instanceof dataTypes.StringType">
-                      <div class="column-option-default-string indent-05">
+                      <div class="column-option-string indent-05">
                         <div>
-                          <label class="options label" for="column-option-default-string-max-length">Max length:</label>
-                          <input id="column-option-default-string-max-length" v-model="genOpt.columnOptionsDefault.str.maxLength" class="options input">
+                          <label class="options label" for="column-option-string-max-length">Max length:</label>
+                          <input id="column-option-string-max-length" v-model="genOpt.columnOptions[name].maxLength" class="options input">
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-string-length-in">Unit of length:</label>
-                          <select id="column-option-default-string-length-in" v-model="genOpt.columnOptionsDefault.str.lengthIn" class="options select">
+                          <label class="options label" for="column-option-string-length-in">Unit of length:</label>
+                          <select id="column-option-string-length-in" v-model="genOpt.columnOptions[name].lengthIn" class="options select">
                             <option v-for="opt in LENGTH_IN_OPTS" :key="opt">{{ opt }}</option>
                           </select>
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-string-prefix">Prefix:</label>
-                          <input id="column-option-default-string-prefix" class="options input">
+                          <label class="options label" for="column-option-string-prefix">Prefix:</label>
+                          <input id="column-option-string-prefix" v-model="genOpt.columnOptions[name].prefix" class="options input">
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-string-loop">Loop:</label>
-                          <select id="column-option-default-string-loop" v-model="genOpt.columnOptionsDefault.str.loop" class="options select">
+                          <label class="options label" for="column-option-string-loop">Loop:</label>
+                          <select id="column-option-string-loop" v-model="genOpt.columnOptions[name].loop" class="options select">
                             <option v-for="opt in STR_LOOP_OPTS" :key="opt">{{ opt }}</option>
                           </select>
                         </div>
                       </div>
                     </template>
                     <template v-if="type instanceof dataTypes.DatetimeType">
-                      <div class="column-option-default-datetime indent-05">
+                      <div class="column-option-datetime indent-05">
                         <div>
-                          <label class="options label" for="column-option-default-datetime-initial-value">Initial value:</label>
-                          <input id="column-option-default-datetime-initial-value" v-model="genOpt.columnOptions[name].initialValue" class="options input">
+                          <label class="options label" for="column-option-datetime-initial-value">Initial value:</label>
+                          <input id="column-option-datetime-initial-value-date" :value="genOpt.columnOptions[name].initialValue?.toISOString().slice(0,10)"
+                                 type="date" class="options input" @change="onChangeOptionsInitialDateValue($event.currentTarget.value, name)"
+                          >
+                          <input id="column-option-datetime-initial-value-time" :value="genOpt.columnOptions[name].initialValue?.toISOString().slice(11,19)"
+                                 type="time" step="1" class="options input" @change="onChangeOptionsInitialTimeValue($event.currentTarget.value, name)"
+                          >
                         </div>
                       </div>
                     </template>
                     <template v-if="type instanceof dataTypes.BooleanType">
-                      <div class="column-option-default-boolean indent-05">
+                      <div class="column-option-boolean indent-05">
                         <div>
-                          <label class="options label" for="column-option-default-boolean-initial-value">Initial value:</label>
-                          <select id="column-option-default-boolean-loop" v-model="genOpt.columnOptions[name].initialValue" class="options select">
-                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          <label class="options label" for="column-option-boolean-initial-value">Initial value:</label>
+                          <select id="column-option-boolean-loop" v-model="genOpt.columnOptions[name].initialValue" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                           </select>
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-boolean-random">Random:</label>
-                          <select id="column-option-default-boolean-loop" v-model="genOpt.columnOptions[name].random" class="options select">
-                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          <label class="options label" for="column-option-boolean-random">Random:</label>
+                          <select id="column-option-boolean-loop" v-model="genOpt.columnOptions[name].random" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                           </select>
                         </div>
                         <div>
-                          <label class="options label" for="column-option-default-boolean-use-null">Use null:</label>
-                          <select id="column-option-default-boolean-use-null" v-model="genOpt.columnOptions[name].useNull" class="options select">
-                            <option v-for="opt in [false,true]" :key="opt">{{ opt }}</option>
+                          <label class="options label" for="column-option-boolean-use-null">Use null:</label>
+                          <select id="column-option-boolean-use-null" v-model="genOpt.columnOptions[name].useNull" class="options select">
+                            <option v-for="opt in [false,true]" :key="opt" :value="opt">{{ opt }}</option>
                           </select>
                         </div>
                       </div>
@@ -257,8 +273,10 @@
     </div>
     <div class="spacer-1em" />
     <div class="generated-data-container">
-      <textarea :value="generatedData" class="generated-data" wrap="off" disabled />
+      <div class="generated-data">{{ generatedData }}</div>
     </div>
+    <div class="spacer-1em" />
+    <div v-if="generateMessageType" :class="{ [generateMessageType]: true }">{{ generateMessage }}</div>
   </div>
   <div class="spacer-2em" />
   <div class="footer-container dummy">
@@ -285,10 +303,11 @@ import {
   dataTypes,
   parse,
   CreateTableStatement,
+  ParseError,
   newCsvFormat,
   newInsertStatementFormat,
 } from '../../../dist';
-const DDL=`create table "ITEM" (
+const PLACEHOLDER_DDL=`create table ITEM (
   id char(10),
   price decimal(10,3),
   qty INTEGER,
@@ -304,37 +323,66 @@ const OUTPUT_FORMAT_OPTS = [
   { label: 'Csv',              constructor: newCsvFormat },
   { label: 'Insert statement', constructor: newInsertStatementFormat },
 ];
-type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 export default defineComponent({
   name: 'Demo',
   setup() {
-    const ddl = ref(DDL);
-    const genOpt = ref<Mutable<GeneratorOption>>(newGeneratorOption());
+    const ddl = ref(PLACEHOLDER_DDL);
+    const genOpt = ref<GeneratorOption>(newGeneratorOption());
     const colNameInUse = ref<(string|undefined)[]>([]);
     type ColDefType = ({colName: string, type: dataTypes.DataType})[];
     const columnDefs = ref<ColDefType>([]);
+    const parseMessage = ref('');
+    const parseMessageType = ref('');
     let parseDone = ref(false);
     let stmt: CreateTableStatement|undefined;
     const onClickParse = () => {
-      const [statements, error] = parse(ddl.value);
-      if (!statements) throw error;
+      const result = parse(ddl.value);
+      if (result instanceof ParseError) {
+        parseMessage.value = 'Parse error!!\n' + result.message;
+        parseMessageType.value = 'isa_error';
+        parseDone.value = false;
+        return;
+      }
+      const statements = result;
       if (statements.length<=0) return;
       stmt = statements[0];
       parseDone.value = true;
       columnDefs.value = statements[0].columns.reduce<ColDefType>((prev, curr) => prev.concat({ colName: curr.name.value, type: curr.dataType }), []);
       console.log(columnDefs.value);
+      parseMessage.value = 'Parse done!';
+      parseMessageType.value = 'isa_success';
     };
     const onClickAddColOpt = () => {
       colNameInUse.value.push(undefined);
     };
+    const onClickDelColOpt = (name: string, idx: number) => {
+      genOpt.value.columnOptions[name] = undefined;
+      colNameInUse.value.splice(idx,1);
+    };
     const generatedData = ref('');
+    const generateMessage = ref('');
+    const generateMessageType = ref('');
     const onClickGenerate = async () => {
       if (!stmt) return;
       generatedData.value = '';
-      for await (const [result, errors]  of generate(stmt, genOpt.value)) {
-        if (errors.length > 0) throw errors;
-        generatedData.value += result.row + '\n';
+      try {
+        for await (const [result, errors] of generate(stmt, genOpt.value)) {
+          if (errors.length > 0) {
+            generateMessage.value = 'Generate error!!\n' + errors.join('\n');
+            generateMessageType.value = 'isa_error';
+            generatedData.value = '';
+            return;
+          }
+          generatedData.value += result.row + '\n';
+        }
+      } catch (err) {
+        generateMessage.value = 'Generate error!!';
+        generateMessageType.value = 'isa_error';
+        generatedData.value = '';
+        return;
       }
+      generateMessage.value = '';
+      generateMessageType.value = '';
     };
     const onChangeColName = (idx: number, event: Event): void => {
       const oldName = colNameInUse.value[idx];
@@ -355,10 +403,31 @@ export default defineComponent({
     const onChangeOutputFormat = (label: string): void => {
       genOpt.value.outputFormat = OUTPUT_FORMAT_OPTS.find(o => o.label===label)!.constructor();
     };
+    const onChangeDefaultOptionsInitialDateValue = (date: string): void => {
+      genOpt.value.columnOptionsDefault.date.initialValue.setUTCFullYear(+date.slice(0,4), +date.slice(5,7)-1, +date.slice(8,10));
+    };
+    const onChangeDefaultOptionsInitialTimeValue = (time: string): void => {
+      genOpt.value.columnOptionsDefault.date.initialValue.setUTCHours(+time.slice(0,2), +time.slice(3,5), +time.slice(6,8));
+    };
+    const onChangeOptionsInitialDateValue = (date: string, name: string): void => {
+      genOpt.value.columnOptions[name] = genOpt.value.columnOptions[name] || newDatetimeColumnOption();
+      const opt = genOpt.value.columnOptions[name];
+      if (opt?.__tag !== 'DatetimeColumnOption') return;
+      opt.initialValue.setUTCFullYear(+date.slice(0,4), +date.slice(5,7)-1, +date.slice(8,10));
+    };
+    const onChangeOptionsInitialTimeValue = (time: string, name: string): void => {
+      genOpt.value.columnOptions[name] = genOpt.value.columnOptions[name] || newDatetimeColumnOption();
+      const opt = genOpt.value.columnOptions[name];
+      if (opt?.__tag !== 'DatetimeColumnOption') return;
+      opt.initialValue.setUTCHours(+time.slice(0,2), +time.slice(3,5), +time.slice(6,8));
+    };
     return {
+      PLACEHOLDER_DDL,
       ddl,
       genOpt,
       parseDone,
+      parseMessage,
+      parseMessageType,
       NUM_LOOP_OPTS,
       STR_LOOP_OPTS,
       LENGTH_IN_OPTS,
@@ -367,11 +436,18 @@ export default defineComponent({
       dataTypes,
       colNameInUse,
       generatedData,
+      generateMessage,
+      generateMessageType,
       onClickParse,
       onClickAddColOpt,
+      onClickDelColOpt,
       onClickGenerate,
       onChangeColName,
       onChangeOutputFormat,
+      onChangeDefaultOptionsInitialDateValue,
+      onChangeDefaultOptionsInitialTimeValue,
+      onChangeOptionsInitialDateValue,
+      onChangeOptionsInitialTimeValue,
     };
   },
   methods: {
@@ -379,6 +455,8 @@ export default defineComponent({
       const el = event.currentTarget as HTMLElement;
       const container = el.parentElement as HTMLElement;
       container.classList.toggle("active");
+      const arrow = el.querySelector('.accordion-arrow') as HTMLElement;
+      arrow.textContent = arrow.textContent === 'ᐅ' ? '▼' : 'ᐅ';
     },
   },
 });
@@ -459,6 +537,7 @@ export default defineComponent({
 .generated-data {
   height: 100%;
   width: 94%;
+  overflow-x: scroll;
 }
 .spacer-1em {
   height: 1em;
@@ -466,13 +545,13 @@ export default defineComponent({
 .spacer-2em {
   height: 2em;
 }
-.column-options-add {
+.column-options-add,
+.column-options-del {
   margin-left: 1em;
   font-size: 60%;
 }
 .accordion-button {
   background-color: #fff;
-  color: #444;
   cursor: pointer;
   padding: 0;
   border: none;
@@ -515,5 +594,31 @@ export default defineComponent({
   top: 0;
   right: 0;
   z-index: 1;
+}
+.isa_info, .isa_success, .isa_warning, .isa_error {
+    margin: 0.5em 0px;
+    padding: 0.6em;
+    border-radius: .3em;
+    white-space: pre-wrap;
+}
+.isa_info {
+    color: #00529B;
+    background-color: #BDE5F8;
+    box-shadow: 0 0 3px #00529B;
+}
+.isa_success {
+    color: #4F8A10;
+    background-color: #DFF2BF;
+    box-shadow: 0 0 3px #00529B;
+}
+.isa_warning {
+    color: #9F6000;
+    background-color: #FEEFB3;
+    box-shadow: 0 0 3px #9F6000;
+}
+.isa_error {
+    color: #D8000C;
+    background-color: #FFD2D2;
+    box-shadow: 0 0 3px #D8000C;
 }
 </style>
