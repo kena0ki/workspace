@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "dddl": "file:../",
+    "monaco-editor": "^0.23.0",
     "purecss": "^2.0.5",
     "vue": "^3.0.5"
   },

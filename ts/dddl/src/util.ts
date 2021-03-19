@@ -8,6 +8,7 @@ export const logger = global.dddlEnableLog || (global.process && global.process.
   time(){},
   timeEnd(){},
 };
+// export const logger = console;
 
 // export function wrapError<T extends Error>(wrapper: T, cause: Error): T {
 //   wrapper.message = wrapper.message + '\n' + cause.message;

@@ -15,7 +15,7 @@
     <p class="instruction">Step1. Input a create statement here.</p>
     <form class="options-form pure-form">
       <div class="input-area-create-statement-container">
-        <textarea v-model="ddl" class="input-area-create-statement" :placeholder="PLACEHOLDER_DDL" />
+        <div id="input-area-create-statement" class="input-area-create-statement" />
       </div>
       <div class="spacer-1em" />
       <div class="input-area-button-container">
@@ -159,7 +159,7 @@
               </div>
             </div>
             <div class="accordion-container">
-              <button type="button" class="accordion-button" @click="onClickAccordion($event)">
+              <button type="button" class="accordion-button" :disabled="!colNameInUse.length" @click="onClickAccordion($event)">
                 <h4 class="accordion"><span class="accordion-arrow">ᐅ</span> Column options by name</h4>
               </button>
               <button type="button" class="pure-button input-area-button column-options-add" @click="onClickAddColOpt">✚</button>
@@ -256,6 +256,14 @@
                 </div>
               </div>
             </div>
+            <div class="accordion-container">
+              <button type="button" class="accordion-button" @click="onClickAccordion($event)">
+                <h4 class="accordion"><span class="accordion-arrow">ᐅ</span> Callback function for each row</h4>
+              </button>
+              <div class="accordion-panel">
+                <div id="options-callback-function" class="options-callback-function" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -272,7 +280,7 @@
       <button type="button" class="pure-button output-area-button" :disabled="!parseDone" @click="onClickGenerate">Generate</button>
     </div>
     <div class="spacer-1em" />
-    <div class="generated-data-container">
+    <div v-if="generatedData" class="generated-data-container">
       <div class="generated-data">{{ generatedData }}</div>
     </div>
     <div class="spacer-1em" />
@@ -288,7 +296,8 @@
 </template>
 
 <script lang="ts">
-import { ref, defineComponent } from 'vue';
+import { ref, defineComponent, onMounted, computed } from 'vue';
+import { monaco } from '../monaco';
 import {
   generate,
   GeneratorOption,
@@ -307,7 +316,7 @@ import {
   newCsvFormat,
   newInsertStatementFormat,
 } from '../../../dist';
-const PLACEHOLDER_DDL=`create table ITEM (
+const DDL_EXAMPLE=`create table EXAMPLE (
   id char(10),
   price decimal(10,3),
   qty INTEGER,
@@ -319,6 +328,31 @@ const PLACEHOLDER_DDL=`create table ITEM (
   updateDate date,
   updateTime time,
 );`;
+const CALLBACK_FUNCTION=
+`
+// type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
+// type KeysInUseType = { [keyName: string]: string[] };
+// type NameIdx={[key:string]:number};
+// type Keys={keyName: string, keys: string[]};
+// type RowProcess = {
+//   row: number
+//   prevColumns: ColumnsType
+//   keysInUse: KeysInUseType
+//   constraints: TableConstraint[]
+//   primaryKeys?: Keys
+//   uniqueKeysSet: Keys[]
+//   nameIdx: NameIdx
+// }
+/**
+ * @param columns
+ * @param process
+ * @param prev
+ * @return [columns: ColumnsType, next: object]
+ */
+function eachRow(columns, process, prev) {
+  return [columns, prev];
+}
+`;
 const OUTPUT_FORMAT_OPTS = [
   { label: 'Csv',              constructor: newCsvFormat },
   { label: 'Insert statement', constructor: newInsertStatementFormat },
@@ -326,7 +360,6 @@ const OUTPUT_FORMAT_OPTS = [
 export default defineComponent({
   name: 'Demo',
   setup() {
-    const ddl = ref(PLACEHOLDER_DDL);
     const genOpt = ref<GeneratorOption>(newGeneratorOption());
     const colNameInUse = ref<(string|undefined)[]>([]);
     type ColDefType = ({colName: string, type: dataTypes.DataType})[];
@@ -335,6 +368,7 @@ export default defineComponent({
     const parseMessageType = ref('');
     let parseDone = ref(false);
     let stmt: CreateTableStatement|undefined;
+    const ddl = computed(() => ddlEditor?.getValue()||'');
     const onClickParse = () => {
       const result = parse(ddl.value);
       if (result instanceof ParseError) {
@@ -421,8 +455,29 @@ export default defineComponent({
       if (opt?.__tag !== 'DatetimeColumnOption') return;
       opt.initialValue.setUTCHours(+time.slice(0,2), +time.slice(3,5), +time.slice(6,8));
     };
+    let ddlEditor: monaco.editor.IStandaloneCodeEditor;
+    onMounted(function() {
+      ddlEditor = monaco.editor.create(document.getElementById('input-area-create-statement') as HTMLElement, {
+        value: DDL_EXAMPLE,
+        language: 'sql',
+        automaticLayout: true,
+        minimap: { enabled: false },
+        lineNumbers: 'off',
+      });
+      const cbEditor = monaco.editor.create(document.getElementById('options-callback-function') as HTMLElement, {
+        value: CALLBACK_FUNCTION,
+        language: 'typescript',
+        automaticLayout: true,
+        minimap: { enabled: false },
+        lineNumbers: 'off',
+      });
+      cbEditor.onDidBlurEditorText(() => {
+        const cb = (new Function('return (' + cbEditor?.getValue() + ')'))();
+        genOpt.value.eachRow = cb;
+        console.log(cb);
+      });
+    });
     return {
-      PLACEHOLDER_DDL,
       ddl,
       genOpt,
       parseDone,
@@ -503,6 +558,7 @@ export default defineComponent({
 .input-area-create-statement {
   width: 90%;
   height: 100%;
+  text-align: left;
 }
 .input-area-button,
 .output-area-button {
@@ -537,7 +593,10 @@ export default defineComponent({
 .generated-data {
   height: 100%;
   width: 94%;
-  overflow-x: scroll;
+  margin: auto;
+  overflow-x: auto;
+  white-space: pre;
+  box-shadow: inset 0px 0px 1px 1px #eee;
 }
 .spacer-1em {
   height: 1em;
@@ -566,6 +625,10 @@ export default defineComponent({
 .accordion-container.active>.accordion-panel {
   max-height: none;
   display: block;
+}
+.options-callback-function {
+  width: 100%;
+  height: 80vh;
 }
 
 .footer-container {
