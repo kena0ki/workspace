@@ -11,7 +11,7 @@ type OmitTag<T> = Omit<T, '__tag'>;
 type Param<T> = Partial<OmitTag<T>>;
 
 /** Options for data to be generated. */
-export interface GeneratorOption<T extends {} = {}> {
+export interface GeneratorOption {
   readonly __tag: 'GeneratorOption'
   /** Output format. Either csv or insert statement. */
   outputFormat: CsvFormat|InsertStatementFormat
@@ -32,10 +32,21 @@ export interface GeneratorOption<T extends {} = {}> {
    */
   columnOptionsDefault: ColumnOptionDefaultType
   /**
-   * A function to manipulate row data after it's generated.
-   * The column you can modify is only the column which is set FixValue option.
+   * This callback function is called each time when rows are generated to modify generated rows.
+   * The columns you can modify is only the columns whose option is set to FixedValue.
+   * @example
+   * // Adds line number to the second column
+   * columns.num[1] = columns.num[1] + (process.row + 1);
+   * // Adds column name to begining of the third column
+   * process.names[2] = process.names[2] + columns.str[2];
+   * // Returns modified columns
+   * return [columns,tempPrev];
+   * @param {ColumnsType} columns Columns to be modified.
+   * @param {RowProcess} process Information used for data generation process.
+   * @param {object} tempPrev Temporary information taken over from previous time.
+   * @returns {[columns: ColumnsType, tempNext: typeof tempPrev]} Modified columns and the temporary information taken over to next time.
    */
-  eachRow?: (columns: ColumnsType, process: RowProcess, prev: T) => [columns: ColumnsType, next: T]
+  eachRow?: (columns: ColumnsType, process: RowProcess, tempPrev: object) => [columns: ColumnsType, tempNext: typeof tempPrev]
   /** The number of rows to be generated. Default: 10 */
   size: number
 }
@@ -266,7 +277,7 @@ export const newFixedValue = (obj: Omit<FixedValue, '__tag'>): FixedValue => ({
 });
 type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
 type KeysInUseType = { [keyName: string]: string[] };
-type NameIdx={[key:string]:number};
+type NameToIdx={[key:string]:number};
 type Keys={keyName: string, keys: string[]};
 type RowProcess = {
   row: number
@@ -275,7 +286,8 @@ type RowProcess = {
   constraints: TableConstraint[]
   primaryKeys?: Keys
   uniqueKeysSet: Keys[]
-  nameIdx: NameIdx
+  nameToIdx: NameToIdx
+  names: string[]
 }
 type ColumnProcess = RowProcess & {
   col: number
@@ -404,11 +416,12 @@ export async function* generate(statement: CreateTableStatement, option: Generat
   let keysInUse: KeysInUseType = {};
   const tableColOpts: co.ColumnOption[][] = columnDefs.map(def => def.options.map(opt => opt.option));
   const constraints= statement.constraints;
-  const nameIdx = columnDefs.reduce<NameIdx>((prev,crr,i) => {
+  const nameToIdx = columnDefs.reduce<NameToIdx>((prev,crr,i) => {
     const next = prev;
     next[crr.name.value]=i;
     return prev;
   }, {});
+  const names = columnDefs.map(colDef => colDef.name.value);
   const primaryKeys: Keys|undefined = (() => {
     for(const constraint of constraints) {
       if (constraint instanceof parser.Unique && constraint.isPrimary) {
@@ -445,7 +458,8 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       constraints,
       primaryKeys,
       uniqueKeysSet,
-      nameIdx
+      nameToIdx,
+      names,
     };
     for(let j=0; j<opts.length; j++) {
       const colProcess: ColumnProcess = {
@@ -549,13 +563,13 @@ const validateFixedValue = (process: ColumnProcess, column: string|undefined, co
 const validateRow = (process: RowProcess, columns: (string|undefined)[]): [keysInuse: KeysInUseType, errors?: GeneratorValidationError[]] => {
   const errors:GeneratorValidationError[]=[];
   if (process.primaryKeys) {
-    const value = process.primaryKeys.keys.reduce((prv, crr) => prv+(columns[process.nameIdx[crr]]||''), '');
+    const value = process.primaryKeys.keys.reduce((prv, crr) => prv+(columns[process.nameToIdx[crr]]||''), '');
     const keyInUse = process.keysInUse[process.primaryKeys.keyName];
     if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
     keyInUse.push(value);
   }
   process.uniqueKeysSet.forEach(uKeys => {
-    const value = uKeys.keys.reduce((prv, crr) => prv+(columns[process.nameIdx[crr]]||''), '');
+    const value = uKeys.keys.reduce((prv, crr) => prv+(columns[process.nameToIdx[crr]]||''), '');
     const keyInUse = process.keysInUse[uKeys.keyName];
     if (keyInUse.includes(value)) errors.push(new GeneratorValidationError('Violated unique-key constraint'));
     keyInUse.push(value);

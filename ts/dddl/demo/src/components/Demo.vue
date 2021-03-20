@@ -344,13 +344,22 @@ const CALLBACK_FUNCTION=
 //   nameIdx: NameIdx
 // }
 /**
- * @param columns
- * @param process
- * @param prev
- * @return [columns: ColumnsType, next: object]
+ * This callback function is called each time when rows are generated to modify generated rows.
+ * The column you can modify is only the column whose option is set to FixedValue.
+ * @example
+ * // Adds line number to the second column
+ * columns.num[1] = columns.num[1] + (process.row + 1);
+ * // Adds column name to begining of the third column
+ * process.names[2] = process.names[2] + columns.str[2];
+ * // Returns modified columns
+ * return [columns,tempPrev];
+ * @param {ColumnsType} columns Columns to be modified.
+ * @param {RowProcess} process Information used for data generation process.
+ * @param {object} tempPrev Temporary information taken over from previous time.
+ * @returns {[columns: ColumnsType, tempNext: typeof tempPrev]} Modified columns and the temporary information taken over to next time.
  */
-function eachRow(columns, process, prev) {
-  return [columns, prev];
+function eachRow(columns, process, tempPrev) {
+  return [columns, tempPrev];
 }
 `;
 const OUTPUT_FORMAT_OPTS = [
