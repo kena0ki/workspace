@@ -1,11 +1,11 @@
 <template>
   <div class="header-container dummy">
     <h1 class="header-title">&nbsp;</h1>
-    <div class="header-subtitle"><span>generates Data from DDL, </span><span>i.e. create table statements.</span></div>
+    <div class="header-subtitle"><span>generates Data from DDL</span></div>
   </div>
   <div class="header-container">
     <h1 class="header-title">DDDL</h1>
-    <div class="header-subtitle"><span>generates Data from DDL, </span><span>i.e. create table statements.</span></div>
+    <div class="header-subtitle"><span>generates Data from DDL</span></div>
   </div>
   <a href="https://github.com/kena0ki/adima">
     <img class="gh-ribbon" src="../assets/forkme_right_red_aa0000.svg">
@@ -49,7 +49,7 @@
               <select id="options-output-format" class="options select" @change="onChangeOutputFormat($event.currentTarget.value)">
                 <option v-for="opt in OUTPUT_FORMAT_OPTS" :key="opt.label">{{ opt.label }}</option>
               </select>
-              <template v-if="genOpt.outputFormat.__tag === 'CsvFormat'">
+              <template v-if="genOpt.outputFormat._tag === 'CsvFormat'">
                 <div class="options-output-format-csv indent-05">
                   <div>
                     <label class="options label" for="options-output-format-csv-delimiter">Step:</label>
@@ -287,17 +287,11 @@
     <div v-if="generateMessageType" :class="{ [generateMessageType]: true }">{{ generateMessage }}</div>
   </div>
   <div class="spacer-2em" />
-  <div class="footer-container dummy">
-    <div class="footer">dummy</div>
-  </div>
-  <div class="footer-container">
-    <div class="footer">Made by kena0ki</div>
-  </div>
 </template>
 
 <script lang="ts">
-import { ref, defineComponent, onMounted, computed } from 'vue';
-import { monaco } from '../monaco';
+import { ref, defineComponent, onMounted } from 'vue';
+import { editor } from '../monaco';
 import {
   generate,
   GeneratorOption,
@@ -317,19 +311,19 @@ import {
   newInsertStatementFormat,
 } from '../../../dist';
 const DDL_EXAMPLE=`create table EXAMPLE (
-  id char(10),
+  id char(10) primary key,
   price decimal(10,3),
   qty INTEGER,
-  name binary(20),
-  type char(2),
+  item_name binary(20),
+  item_type char(2),
   rate decimal(1,0),
-  sold_out boolean,
+  sold_out boolean not null,
   updatedAt timestamp,
   updateDate date,
   updateTime time,
+  constraint unique_name unique (item_name)
 );`;
-const CALLBACK_FUNCTION=
-`
+const CALLBACK_FUNCTION=`
 // type ColumnsType = {num:number[], str:string[], date:Date[], bool:(boolean|undefined)[], fixed: (string|undefined)[]};
 // type KeysInUseType = { [keyName: string]: string[] };
 // type NameIdx={[key:string]:number};
@@ -342,23 +336,20 @@ const CALLBACK_FUNCTION=
 //   primaryKeys?: Keys
 //   uniqueKeysSet: Keys[]
 //   nameIdx: NameIdx
+//   names: string[]
 // }
 /**
  * This callback function is called each time when rows are generated to modify generated rows.
- * The column you can modify is only the column whose option is set to FixedValue.
- * @example
- * // Adds line number to the second column
- * columns.num[1] = columns.num[1] + (process.row + 1);
- * // Adds column name to begining of the third column
- * process.names[2] = process.names[2] + columns.str[2];
- * // Returns modified columns
- * return [columns,tempPrev];
  * @param {ColumnsType} columns Columns to be modified.
- * @param {RowProcess} process Information used for data generation process.
- * @param {object} tempPrev Temporary information taken over from previous time.
- * @returns {[columns: ColumnsType, tempNext: typeof tempPrev]} Modified columns and the temporary information taken over to next time.
+ * @param {Readonly<RowProcess>} process Information used for data generation process.
+ * @param {object} tempPrev Temporary information taken over from previous time function call.
+ * @returns {[columns: ColumnsType, tempNext: typeof tempPrev]} Modified columns and the temporary information taken over to next time function call.
  */
 function eachRow(columns, process, tempPrev) {
+  // // Adds line number to the second column
+  // columns.num[1] = columns.num[1] + (process.row + 1);
+  // // Adds column name to begining of the fourth column
+  // columns.str[3] = process.names[3] + columns.str[3];
   return [columns, tempPrev];
 }
 `;
@@ -377,9 +368,9 @@ export default defineComponent({
     const parseMessageType = ref('');
     let parseDone = ref(false);
     let stmt: CreateTableStatement|undefined;
-    const ddl = computed(() => ddlEditor?.getValue()||'');
     const onClickParse = () => {
-      const result = parse(ddl.value);
+      const ddl = ddlEditor?.getValue();
+      const result = parse(ddl);
       if (result instanceof ParseError) {
         parseMessage.value = 'Parse error!!\n' + result.message;
         parseMessageType.value = 'isa_error';
@@ -408,13 +399,12 @@ export default defineComponent({
     const onClickGenerate = async () => {
       if (!stmt) return;
       generatedData.value = '';
+      let warnings = '';
       try {
         for await (const [result, errors] of generate(stmt, genOpt.value)) {
           if (errors.length > 0) {
-            generateMessage.value = 'Generate error!!\n' + errors.join('\n');
-            generateMessageType.value = 'isa_error';
-            generatedData.value = '';
-            return;
+            warnings += '\n' + errors.map(e => e.message).join('\n');
+            generateMessage.value = '';
           }
           generatedData.value += result.row + '\n';
         }
@@ -422,10 +412,16 @@ export default defineComponent({
         generateMessage.value = 'Generate error!!';
         generateMessageType.value = 'isa_error';
         generatedData.value = '';
+        console.error(err);
         return;
       }
-      generateMessage.value = '';
-      generateMessageType.value = '';
+      if (warnings) {
+        generateMessage.value = 'Warnings!\n' + warnings;
+        generateMessageType.value = 'isa_warning';
+      } else {
+        generateMessage.value = '';
+        generateMessageType.value = '';
+      }
     };
     const onChangeColName = (idx: number, event: Event): void => {
       const oldName = colNameInUse.value[idx];
@@ -455,27 +451,27 @@ export default defineComponent({
     const onChangeOptionsInitialDateValue = (date: string, name: string): void => {
       genOpt.value.columnOptions[name] = genOpt.value.columnOptions[name] || newDatetimeColumnOption();
       const opt = genOpt.value.columnOptions[name];
-      if (opt?.__tag !== 'DatetimeColumnOption') return;
+      if (opt?._tag !== 'DatetimeColumnOption') return;
       opt.initialValue.setUTCFullYear(+date.slice(0,4), +date.slice(5,7)-1, +date.slice(8,10));
     };
     const onChangeOptionsInitialTimeValue = (time: string, name: string): void => {
       genOpt.value.columnOptions[name] = genOpt.value.columnOptions[name] || newDatetimeColumnOption();
       const opt = genOpt.value.columnOptions[name];
-      if (opt?.__tag !== 'DatetimeColumnOption') return;
+      if (opt?._tag !== 'DatetimeColumnOption') return;
       opt.initialValue.setUTCHours(+time.slice(0,2), +time.slice(3,5), +time.slice(6,8));
     };
-    let ddlEditor: monaco.editor.IStandaloneCodeEditor;
+    let ddlEditor: editor.IStandaloneCodeEditor;
     onMounted(function() {
-      ddlEditor = monaco.editor.create(document.getElementById('input-area-create-statement') as HTMLElement, {
+      ddlEditor = editor.create(document.getElementById('input-area-create-statement') as HTMLElement, {
         value: DDL_EXAMPLE,
         language: 'sql',
         automaticLayout: true,
         minimap: { enabled: false },
         lineNumbers: 'off',
       });
-      const cbEditor = monaco.editor.create(document.getElementById('options-callback-function') as HTMLElement, {
+      const cbEditor = editor.create(document.getElementById('options-callback-function') as HTMLElement, {
         value: CALLBACK_FUNCTION,
-        language: 'typescript',
+        language: 'javascript',
         automaticLayout: true,
         minimap: { enabled: false },
         lineNumbers: 'off',
@@ -487,7 +483,6 @@ export default defineComponent({
       });
     });
     return {
-      ddl,
       genOpt,
       parseDone,
       parseMessage,
@@ -598,6 +593,7 @@ export default defineComponent({
 .generated-data-container {
   width: 100%;
   height: 40vh;
+  text-align: left;
 }
 .generated-data {
   height: 100%;
@@ -640,24 +636,6 @@ export default defineComponent({
   height: 80vh;
 }
 
-.footer-container {
-  position: fixed;
-  left: 0;
-  bottom: 0px;
-  width: 100%;
-  text-align: right;
-  background-color: white;
-  box-shadow: inset 0 0 3em rgba(0, 0, 0,.1);
-  z-index: 1;
-  padding: .5em;
-}
-.footer-container.dummy {
-  position: relative;
-  z-index: -1;
-}
-.footer {
-  margin: 0 1em;
-}
 .gh-ribbon {
   display: block;
   width: 80px;

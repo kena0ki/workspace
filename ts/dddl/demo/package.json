@@ -5,23 +5,25 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "esbuild": "ts-node -P ./script/tsconfig.json ./script/build.ts"
   },
   "dependencies": {
     "dddl": "file:../",
     "monaco-editor": "^0.23.0",
     "purecss": "^2.0.5",
-    "vue": "^3.0.5"
+    "vue": "^3.0.6"
   },
   "devDependencies": {
+    "@vue/compiler-sfc": "^3.0.6",
     "@babel/eslint-parser": "^7.13.8",
     "@typescript-eslint/parser": "^4.16.1",
     "@vitejs/plugin-vue": "^1.1.4",
-    "@vue/compiler-sfc": "^3.0.5",
-    "esbuild": "file:../node_modules/esbuild/",
     "eslint-plugin-vue": "^7.6.0",
+    "ts-node": "^9.1.1",
     "typescript": "^4.2.2",
-    "vite": "^2.0.1",
-    "vls": "^0.7.0"
+    "vite": "^2.1.2",
+    "vls": "^0.7.0",
+    "yargs": "^16.2.0"
   }
 }

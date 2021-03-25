@@ -2,13 +2,15 @@
 
 export const global = Function('return this')();
 
-export const logger = global.dddlEnableLog || (global.process && global.process.env.DDDL_ENABLE_LOG) ? console : {
+export const logger = global.dddlEnableLog
+  // Rollup.js unable to parse the following line.
+  // || (global.process && global.process.env.DDDL_ENABLE_LOG)
+  ? console : {
   log(){},
   trace(){},
   time(){},
   timeEnd(){},
 };
-// export const logger = console;
 
 // export function wrapError<T extends Error>(wrapper: T, cause: Error): T {
 //   wrapper.message = wrapper.message + '\n' + cause.message;
@@ -17,9 +19,6 @@ export const logger = global.dddlEnableLog || (global.process && global.process.
 //   }
 //   return wrapper;
 // }
-
-export const min = (...args: number[]): number => args.sort((a,b) => a-b)[0];
-export const max = (...args: number[]): number => args.sort((a,b) => b-a)[0];
 
 const surrogatePairs = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
 export const length = (str: string): number => str.replace(surrogatePairs,' ').length;

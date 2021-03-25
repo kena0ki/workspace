@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Data generator using DDL",
   "main": "index.js",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "esbuild:lib": "ts-node -P ./script/tsconfig.json ./script/build.ts",
     "build:lib": "tsc -p ./src/tsconfig.json --emitDeclarationOnly && npm run esbuild:lib",
@@ -36,7 +39,7 @@
     "@typescript-eslint/parser": "^4.14.2",
     "chokidar-cli": "^2.1.0",
     "concurrently": "^5.3.0",
-    "esbuild": "^0.8.40",
+    "esbuild": "^0.9.6",
     "eslint": "^7.19.0",
     "jest": "^26.6.3",
     "ts-jest": "^26.5.0",

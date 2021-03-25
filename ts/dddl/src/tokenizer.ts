@@ -1,4 +1,4 @@
-import { logger, util } from './util';
+import { logger } from './util';
 import { Keyword } from './keywords';
 
 export class Token {
@@ -167,7 +167,7 @@ export class TokenSet extends Array<Token> {
   joinValues = (delim:string = ','): string => this.slice(1).reduce((prev, curr) => `${prev}${delim}${curr.value}`, this[0].value);
 }
 export const getTokenLocation = (tokenSet: TokenSet, idx: number=Infinity): [row:number,column:number] => {
-  const loopEnd=util.min(tokenSet.length, idx-1);
+  const loopEnd=Math.min(tokenSet.length, idx-1);
   let row=1, col=1;
   for(let i=0; i<loopEnd; i++) {
     const token = tokenSet[i];
@@ -222,7 +222,7 @@ const takeWhile = (chars: string[], testStart: number, advanceBy: (ch: string, i
   let i=testStart;
   let by=0;
   while(i < chars.length && (by = advanceBy(chars[i], i, chars)) ) i+=by;
-  return chars.slice(0, util.min(i, chars.length)).join('');
+  return chars.slice(0, Math.min(i, chars.length)).join('');
 };
 const takeWhileOrError = (chars: string[], testStart: number, advanceBy: (ch: string, idx: number, chars: string[]) => number, msg: string): string => {
   let i=testStart;
