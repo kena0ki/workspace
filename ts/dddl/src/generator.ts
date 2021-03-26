@@ -167,8 +167,11 @@ export interface StringColumnOption {
   readonly _tag: 'StringColumnOption',
   /** Limit of incrementation. @default depend on the corresponding table data type. */
   maxLength: number,
-  /** Which measurement unit to use, either char or byte. @default char */
-  lengthIn: typeof LENGTH_IN_OPTS[number],
+  /**
+   * Which measurement unit to use, either char or byte.
+   * @default char for character string type column, byte for byte string type column
+   */
+  lengthIn?: typeof LENGTH_IN_OPTS[number],
   /** Prefix. @default a character in A-Z, a-z, depending on the column position */
   prefix: Prefix,
   /**
@@ -180,7 +183,7 @@ export interface StringColumnOption {
 }
 export const newStringColumnOption = (obj?: Omit<Param<StringColumnOption>, '__prefixStr'>): StringColumnOption => ({
   maxLength: 0,
-  lengthIn: 'char',
+  lengthIn: undefined,
   prefix: '',
   loop: 'loop',
   ...obj,
@@ -188,32 +191,69 @@ export const newStringColumnOption = (obj?: Omit<Param<StringColumnOption>, '__p
 });
 type CharColumnOption = OmitTag<StringColumnOption> & {
   readonly _tag: 'CharColumnOption'
+  lengthIn: typeof LENGTH_IN_OPTS[number],
   /** @internal */
   __prefixStr: string,
   /** @internal */
   __prefixStrLength: number,
 }
-export const newCharColumnOption = (obj?: Param<CharColumnOption>): CharColumnOption => ({
-  ...newStringColumnOption(obj),
-  lengthIn: obj?.lengthIn || 'char',
-  __prefixStr: obj?.__prefixStr || '',
-  __prefixStrLength: obj?.__prefixStrLength || 0,
-  _tag: 'CharColumnOption',
-});
+export const newCharColumnOption = (obj?: Param<CharColumnOption>): CharColumnOption => {
+  const temp: CharColumnOption = {
+    ...newStringColumnOption(obj),
+    lengthIn: obj?.lengthIn || 'char',
+    __prefixStr: obj?.__prefixStr || '',
+    __prefixStrLength: obj?.__prefixStrLength || 0,
+    _tag: 'CharColumnOption',
+  };
+  const [__prefixStr, __prefixStrLength] = calcPrefix(temp.lengthIn, temp.__prefixStr, temp.maxLength);
+  return { ...temp, __prefixStr, __prefixStrLength };
+};
 type BinaryColumnOption = OmitTag<StringColumnOption> & {
   readonly _tag: 'BinaryColumnOption'
+  lengthIn: typeof LENGTH_IN_OPTS[number],
   /** @internal */
   __prefixStr: string,
   /** @internal */
   __prefixStrLength: number,
 }
-export const newBinaryColumnOption = (obj?: Param<BinaryColumnOption>): BinaryColumnOption => ({
-  ...newStringColumnOption(obj),
-  lengthIn: obj?.lengthIn || 'byte',
-  __prefixStr: obj?.__prefixStr || '',
-  __prefixStrLength: obj?.__prefixStrLength || 0,
-  _tag: 'BinaryColumnOption',
-});
+export const newBinaryColumnOption = (obj?: Param<BinaryColumnOption>): BinaryColumnOption => {
+  const temp: BinaryColumnOption = {
+    ...newStringColumnOption(obj),
+    lengthIn: obj?.lengthIn || 'byte',
+    __prefixStr: obj?.__prefixStr || '',
+    __prefixStrLength: obj?.__prefixStrLength || 0,
+    _tag: 'BinaryColumnOption',
+  };
+  const [__prefixStr, __prefixStrLength] = calcPrefix(temp.lengthIn, temp.__prefixStr, temp.maxLength);
+  return { ...temp, __prefixStr, __prefixStrLength };
+};
+const calcPrefix = (lengthIn: typeof LENGTH_IN_OPTS[number], basePrefix: string, maxLength: number): [string, number] => {
+  if (lengthIn === 'char') {
+    // https://dev.to/coolgoose/quick-and-easy-way-of-counting-utf-8-characters-in-javascript-23ce
+    const destructed = basePrefix.split(/(\P{Mark}\p{Mark}*)/u).filter(chr => chr).filter((_,index) => index < maxLength-1);
+    const __prefixStr = destructed.join('');
+    const __prefixStrLength = destructed.length;
+    return [__prefixStr, __prefixStrLength];
+  } else {
+    const encoder = new TextEncoder();
+    const prefixU8: Readonly<Uint8Array> = encoder.encode(basePrefix);
+    const [__prefixStr, __prefixStrLength] = ((): [string, number] => {
+      const decoder = new TextDecoder();
+      let endIdx;
+      for (endIdx=maxLength-1; endIdx>0; endIdx--){
+        if ((prefixU8[endIdx] & 0xC0) !== 0x80) break;
+      }
+      const slice = prefixU8.slice(0, endIdx);
+      const decoded = decoder.decode(slice);
+      const decodedLength = decoded.split(/(\P{Mark}\p{Mark}*)/u).filter(chr => chr).length;
+      const destructed = basePrefix.split(/(\P{Mark}\p{Mark}*)/u).filter(chr => chr);
+      const slicedDestructed = destructed.filter((_,index) => index < decodedLength);
+      const prefixStr = decoded === slicedDestructed.join('') ? decoded : destructed.filter((_,index) => index<slicedDestructed.length-1).join('');
+      return [prefixStr, encoder.encode(prefixStr).length];
+    })();
+    return [__prefixStr, __prefixStrLength];
+  }
+};
 /** DatetimeColumnOption is used for GeneratorOption.columnOptions */
 export interface DatetimeColumnOption {
   readonly _tag: 'DatetimeColumnOption',
@@ -408,29 +448,8 @@ export async function* generate(statement: CreateTableStatement, option: Generat
       const maxLength = nonNullOpt.maxLength || dataType.length || 10; // There is no reason for 10 but we need a concrete integer value.
       logger.log('maxLength', dataType.length);
       let __prefixStr:string = typeof nonNullOpt.prefix === 'function' ? nonNullOpt.prefix(i,def.name.value) : nonNullOpt.prefix;
-      let __prefixStrLength = 0;
-      if (__prefixStr) {
-        if (isChar) {
-          // https://dev.to/coolgoose/quick-and-easy-way-of-counting-utf-8-characters-in-javascript-23ce
-          const destructedStr = __prefixStr.split(/(\P{Mark}\p{Mark}*)/u).filter((chr, index) => chr && index < maxLength);
-          __prefixStr = destructedStr.join('');
-          __prefixStrLength = destructedStr.length;
-        } else {
-          const encoder = new TextEncoder(); const prefixU8: Readonly<Uint8Array> = encoder.encode(__prefixStr);
-          [__prefixStr, __prefixStrLength] = ((): [string, number] => {
-            const decoder = new TextDecoder();
-            let endIdx;
-            for (endIdx=maxLength-1; endIdx>0; endIdx--){
-              if ((prefixU8[endIdx] & 0xC0) !== 0x80) break;
-            }
-            const sliced = prefixU8.slice(0, endIdx-1);
-            return [decoder.decode(sliced), sliced.length];
-          })();
-        }
-      } else {
-        __prefixStr=String.fromCodePoint(strPrefixCodePoint++).slice(0,maxLength-1);
-        __prefixStrLength=__prefixStr.length;
-      }
+      __prefixStr = __prefixStr || String.fromCodePoint(strPrefixCodePoint++).slice(0,maxLength-1);
+      const __prefixStrLength = __prefixStr.length;
       opt = isChar ? newCharColumnOption({...nonNullOpt, maxLength, __prefixStr, __prefixStrLength}) :
                      newBinaryColumnOption({...nonNullOpt, maxLength, __prefixStr, __prefixStrLength});
       const initialValue:string = '0'.repeat(maxLength - opt.__prefixStrLength);
