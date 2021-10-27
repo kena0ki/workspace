@@ -11,7 +11,6 @@ pub fn fn001(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
 
     // println!("{:?}", s);
     println!("{:?}", s);
-    println!("{:?}", s.summary);
 
   return Ok(());
 }
@@ -33,12 +32,10 @@ struct Summarizer {
 
 impl Summarizer {
     pub fn memoized_recursion(self: &mut Self, state: State) -> usize{
-        self.debug_memo[state.width][state.height]+=1;
         let mut cnt=0;
         if state.width == self.max_width && state.height == self.max_height{
-            self.summary+=1;
-            self.memo[state.width][state.height]=self.summary;
-            return cnt;
+            self.memo[state.width][state.height]=1;
+            return self.memo[state.width][state.height];
         }
         if state.height < self.max_height {
             let next_val = self.memo[state.width][state.height+1];
@@ -62,8 +59,9 @@ impl Summarizer {
                 cnt+=next_val;
             }
         }
+        self.debug_memo[state.width][state.height]+=1;
         self.memo[state.width][state.height]=cnt;
-        return cnt;
+        return self.memo[state.width][state.height];
     }
 }
 
