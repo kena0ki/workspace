@@ -6,12 +6,14 @@ mod macros;
 mod fncs;
 
 use fncs::fn001;
+use fncs::fn002;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     dispatch_to!(args[1].as_str(), args
         => {
             fn001,
+            fn002,
         }
     ).unwrap();
 }
