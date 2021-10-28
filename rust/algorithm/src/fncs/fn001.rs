@@ -1,10 +1,11 @@
+use text_io::read;
 
 // https://www.itmedia.co.jp/enterprise/articles/1003/06/news002.html
-pub fn fn001(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
+pub fn fn001(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
     let mut s = Summarizer::default();
     let state = State::default();
-    s.max_width=args[2].parse::<usize>().unwrap();
-    s.max_height=args[3].parse::<usize>().unwrap();
+    s.max_width=read!();
+    s.max_height=read!();
     s.debug_memo=vec![vec![0; s.max_height+1]; s.max_width+1];
     s.memo=vec![vec![0; s.max_height+1]; s.max_width+1];
     s.memoized_recursion(state);
