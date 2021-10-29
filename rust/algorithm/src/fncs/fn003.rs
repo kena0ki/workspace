@@ -1,7 +1,7 @@
 
 use text_io::read;
 
-// https://www.itmedia.co.jp/enterprise/articles/1003/06/news002.html
+// calculate combination using memoized recursion (see fn001)
 pub fn fn003(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
     let num: String = read!();
     let num_sel: usize = read!();
