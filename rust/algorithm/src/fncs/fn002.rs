@@ -1,17 +1,18 @@
+use text_io::read;
 
-pub fn fn002(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
-    let number = &args[2];
-    let perm_len = &args[3].parse::<usize>().unwrap();
+pub fn fn002(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
+    let string:String = read!();
+    let perm_len:usize = read!();
     let p = Params {
-        rest: number.as_str().as_bytes().into(),
+        rest: string.as_bytes().into(),
         perm: vec![],
     };
     let mut o = Obj {
         accum: vec![],
-        rest_len: number.len() - perm_len,
+        rest_len: string.len() - perm_len,
     };
     o.rec(p);
-    println!("{:?}", o.accum);
+    // println!("{:?}", o.accum);
     println!("{:?}", o.accum.len());
     return Ok(());
 }
