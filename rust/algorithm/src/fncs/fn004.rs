@@ -6,14 +6,13 @@ pub fn fn004(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
     let string:String = read!();
     let perm_len:usize = read!();
     let mut c = Calc::new(string.chars().collect(), perm_len);
-    c.next_perm();
+    c.next_perm(perm_len);
     return Ok(());
 }
 
 #[derive(Clone, Default, Debug)]
-struct Params {
-    pub rest: Vec<u8>,
-    pub perm: Vec<u8>,
+struct _Params {
+    pub depth: usize,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -31,27 +30,9 @@ impl <T: Clone + PartialEq> Calc<T> {
             k,
         };
     }
-    fn next_perm(self: &mut Self) -> usize {
+    fn next_perm(self: &mut Self, depth: usize) -> usize {
         let mut cnt=0;
-        for i in 0..self.chars.len() {
-            for j in 0..i {
-                let bk_chars = self.work_chars.to_vec();
-                self.work_chars.swap(0,1);
-                cnt+=1;
-                for k in 0..j-1 {
-                    for l in 1..k-1 {
-                        self.work_chars.swap(l,l+1);
-                        cnt+=1;
-                    }
-                    self.work_chars.swap(0,1);
-                    cnt+=1;
-                    if bk_chars == self.work_chars {
-                        break;
-                    }
-                }
-                self.work_chars.swap(0,j);
-            }
-        }
+
         return cnt;
     }
 }

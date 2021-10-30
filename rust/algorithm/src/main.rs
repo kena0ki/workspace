@@ -8,6 +8,7 @@ mod fncs;
 use fncs::fn001;
 use fncs::fn002;
 use fncs::fn003;
+use fncs::fn004;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -16,6 +17,7 @@ fn main() {
             fn001,
             fn002,
             fn003,
+            fn004,
         }
     ).unwrap();
 }
