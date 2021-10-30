@@ -11,8 +11,7 @@ pub fn fn001(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
     s.memoized_recursion(state);
 
     // println!("{:?}", s);
-    println!("{:?}", s);
-    println!("{:?}", s.summary);
+    println!("{:?}", s.memo[0][0]);
 
   return Ok(());
 }
