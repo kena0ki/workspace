@@ -5,23 +5,25 @@ use std::ops::{Add,Sub,Mul,Div};
 
 // const MOD: usize = 53;
 const MOD: usize = 998244353;
-type BitType=i64;
+
 #[derive(Debug)]
-struct BinaryIndexedTree{
+struct BinaryIndexedTree<T>{
+    ini_val: T,
     n: usize,
-    bit: Vec<BitType>,
+    bit: Vec<T>,
 }
-impl BinaryIndexedTree{
-    pub fn new(n :usize) -> BinaryIndexedTree {
+impl <T:Clone+Copy+Add<Output=T>> BinaryIndexedTree<T>{
+    pub fn new(n: usize, ini_val: T) -> BinaryIndexedTree<T> {
         return Self {
+            ini_val,
             n,
-            bit: vec![0; n+1],
+            bit: vec![ini_val; n+1],
         };
     }
-    pub fn addition(x: BitType, y: BitType) -> BitType{
-        return (x+y) % MOD as BitType;
+    pub fn addition(x: T, y: T) -> T{
+        return x+y;
     }
-    pub fn add(self: &mut Self, mut idx: usize,a: BitType){
+    pub fn add(self: &mut Self, mut idx: usize,a: T){
         idx+=1;
         loop {
             if idx > self.n {
@@ -32,9 +34,9 @@ impl BinaryIndexedTree{
             idx+=(idx64 & -idx64) as usize;
         }
     }
-    pub fn sum(self: &mut Self, mut idx: usize) -> BitType{
+    pub fn sum(self: &mut Self, mut idx: usize) -> T {
         idx+=1;
-        let mut ret = 0;
+        let mut ret = self.ini_val;
         loop {
             if idx<=0 {
                 break;
@@ -128,7 +130,6 @@ impl fmt::Display for ModUsize {
     }
 }
 
-
 pub fn modpow(mut x: usize,mut y: usize) -> usize{
     let mut ret = 1;
     while 0 < y {
@@ -169,15 +170,15 @@ fn main(){
         a[i]=read!();
     }
     let (arr,m) = compress(&mut a);
-    let mut bit = BinaryIndexedTree::new(m);
-    let factory = ModUsizeFactory(MOD);
-    let mut ans = factory.new();
-    let m2 = factory.new_val(2);
+    let f = ModUsizeFactory(MOD);
+    let mut bit = BinaryIndexedTree::new(m, f.new());
+    let mut ans = f.new();
+    let m2 = f.new_val(2);
     let m2_inv = m2.inv();
     for i in 0..n {
-        let sum = factory.new_val(bit.sum(arr[i]) as usize) * m2.pow(i);
+        let sum = bit.sum(arr[i]) * m2.pow(i);
         ans = ans + sum;
-        bit.add(arr[i], m2_inv.pow(i+1).val as i64);
+        bit.add(arr[i], m2_inv.pow(i+1));
     }
     println!("{}", ans);
 }
