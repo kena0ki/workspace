@@ -48,9 +48,9 @@ impl <T:Clone+Copy+Add<Output=T>> BinaryIndexedTree<T>{
         return ret;
     }
 }
+
 type Modulus = usize;
 struct ModUsizeFactory (Modulus);
-
 impl ModUsizeFactory {
     fn new(self: &Self) -> ModUsize{
         return self.new_val(0);
@@ -62,7 +62,6 @@ impl ModUsizeFactory {
         };
     }
 }
-
 #[derive(Debug,Clone,Copy)]
 struct ModUsize{
     modulus: usize,
@@ -130,22 +129,6 @@ impl fmt::Display for ModUsize {
     }
 }
 
-pub fn modpow(mut x: usize,mut y: usize) -> usize{
-    let mut ret = 1;
-    while 0 < y {
-        if y & 1 == 1{
-            ret *= x;
-            ret %= MOD as usize;
-        }
-        x *= x;
-        x %= MOD as usize;
-        y >>= 1;
-    }
-    return ret;
-}
-pub fn modinv(x: usize) -> usize {
-    return modpow(x, MOD as usize - 2);
-}
 pub fn compress<T:Ord+Clone+Copy>(a: &mut Vec<T>) -> (Vec<usize>, usize) {
     let mut set = BTreeSet::<T>::new();
     for i in 0..a.len() {
@@ -163,6 +146,7 @@ pub fn compress<T:Ord+Clone+Copy>(a: &mut Vec<T>) -> (Vec<usize>, usize) {
     }
     return (ret, size);
 }
+
 fn main(){
     let n:usize = read!();
     let mut a = vec![0usize;n];
