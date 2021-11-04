@@ -1,7 +1,7 @@
 
 use text_io::read;
 
-// permutation
+// [WIP] permutation
 pub fn fn004(_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>{
     let string:String = read!();
     let perm_len:usize = read!();
