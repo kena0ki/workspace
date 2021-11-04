@@ -68,6 +68,35 @@ struct ModUsize{
     val: usize,
 }
 impl ModUsize {
+    pub fn add_by(self: &mut Self, rhs: usize) {
+        self.val += rhs;
+        if self.val >= self.modulus {
+            self.val -= self.modulus;
+        }
+    }
+    pub fn sub_by(self: &mut Self, rhs: usize) {
+        if self.val < rhs {
+            self.val += self.modulus - rhs;
+        } else {
+            self.val -= rhs;
+        }
+    }
+    pub fn mul_by(self: &mut Self, rhs: usize) {
+        self.val = (self.val * rhs) % self.modulus;
+    }
+    pub fn div_by(self: &mut Self, rhs: usize) {
+        let mut power = self.modulus - 2;
+        let mut square = rhs;
+        while 0 < power {
+            if (power & 1) == 1{
+                self.val *= square;
+                self.val %= self.modulus;
+            }
+            square *= square;
+            square %= self.modulus;
+            power >>= 1;
+        }
+    }
     pub fn pow(self: &Self, mut power: usize) -> Self{
         let mut square = self.val;
         let mut ret = 1;
@@ -92,35 +121,29 @@ impl ModUsize {
 impl Add for ModUsize {
     type Output = Self;
     fn add(mut self: Self, rhs: Self) -> Self {
-        self.val += rhs.val;
-        if self.val >= self.modulus {
-            self.val -= self.modulus;
-        }
+        self.add_by(rhs.val);
         return self;
     }
 }
 impl Sub for ModUsize {
     type Output = Self;
     fn sub(mut self: Self, rhs: Self) -> Self {
-        if self.val < rhs.val {
-            self.val += self.modulus - rhs.val;
-        } else {
-            self.val -= rhs.val;
-        }
+        self.sub_by(rhs.val);
         return self;
     }
 }
 impl Mul for ModUsize {
     type Output = Self;
     fn mul(mut self: Self, rhs: Self) -> Self {
-        self.val = (self.val * rhs.val) % self.modulus;
+        self.mul_by(rhs.val);
         return self;
     }
 }
 impl Div for ModUsize {
     type Output = Self;
-    fn div(self: Self, rhs: Self) -> Self {
-        return self * rhs.inv();
+    fn div(mut self: Self, rhs: Self) -> Self {
+        self.div_by(rhs.val);
+        return self;
     }
 }
 impl fmt::Display for ModUsize {
@@ -147,6 +170,12 @@ pub fn compress<T:Ord+Clone+Copy>(a: &mut Vec<T>) -> (Vec<usize>, usize) {
     return (ret, size);
 }
 
+// https://atcoder.jp/contests/abc221/tasks/abc221_e
+// - input:
+// 10
+// 198495780 28463047 859606611 212983738 946249513 789612890 782044670 700201033 367981604 302538501
+// - expected:
+// 830
 fn main(){
     let n:usize = read!();
     let mut a = vec![0usize;n];
@@ -157,12 +186,15 @@ fn main(){
     let f = ModUsizeFactory(MOD);
     let mut bit = BinaryIndexedTree::new(m, f.new());
     let mut ans = f.new();
-    let m2 = f.new_val(2);
-    let m2_inv = m2.inv();
-    for i in 0..n {
-        let sum = bit.sum(arr[i]) * m2.pow(i);
+    let mut m2 = f.new_val(2);
+    let mut m2_inv = m2.inv();
+    for i in 1..n {
+        bit.add(arr[i-1], m2_inv);
+        let sum = bit.sum(arr[i]) * m2;
         ans = ans + sum;
-        bit.add(arr[i], m2_inv.pow(i+1));
+        m2.mul_by(2);
+        m2_inv.div_by(2);
     }
     println!("{}", ans);
 }
+
