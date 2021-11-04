@@ -30,9 +30,9 @@ impl <T: Clone + PartialEq> Calc<T> {
             k,
         };
     }
-    fn next_perm(self: &mut Self, depth: usize) -> usize {
-        let mut cnt=0;
+    fn next_perm(self: &mut Self, _depth: usize) -> usize {
+        let mut _cnt=0;
 
-        return cnt;
+        return _cnt;
     }
 }
