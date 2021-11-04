@@ -47,14 +47,14 @@ impl BinaryIndexedTree{
     }
 }
 type Modulus = usize;
-struct MUIntFactory (Modulus);
+struct ModUsizeFactory (Modulus);
 
-impl MUIntFactory {
-    fn new(self: &Self) -> MUInt{
+impl ModUsizeFactory {
+    fn new(self: &Self) -> ModUsize{
         return self.new_val(0);
     }
-    fn new_val(self: &Self, val: usize) -> MUInt{
-        return MUInt {
+    fn new_val(self: &Self, val: usize) -> ModUsize{
+        return ModUsize {
             modulus: self.0,
             val,
         };
@@ -62,11 +62,11 @@ impl MUIntFactory {
 }
 
 #[derive(Debug,Clone,Copy)]
-struct MUInt{
+struct ModUsize{
     modulus: usize,
     val: usize,
 }
-impl MUInt {
+impl ModUsize {
     pub fn pow(self: &Self, mut power: usize) -> Self{
         let mut square = self.val;
         let mut ret = 1;
@@ -88,7 +88,7 @@ impl MUInt {
         return self.pow(self.modulus - 2);
     }
 }
-impl Add for MUInt {
+impl Add for ModUsize {
     type Output = Self;
     fn add(mut self: Self, rhs: Self) -> Self {
         self.val += rhs.val;
@@ -98,7 +98,7 @@ impl Add for MUInt {
         return self;
     }
 }
-impl Sub for MUInt {
+impl Sub for ModUsize {
     type Output = Self;
     fn sub(mut self: Self, rhs: Self) -> Self {
         if self.val < rhs.val {
@@ -109,20 +109,20 @@ impl Sub for MUInt {
         return self;
     }
 }
-impl Mul for MUInt {
+impl Mul for ModUsize {
     type Output = Self;
     fn mul(mut self: Self, rhs: Self) -> Self {
         self.val = (self.val * rhs.val) % self.modulus;
         return self;
     }
 }
-impl Div for MUInt {
+impl Div for ModUsize {
     type Output = Self;
     fn div(self: Self, rhs: Self) -> Self {
         return self * rhs.inv();
     }
 }
-impl fmt::Display for MUInt {
+impl fmt::Display for ModUsize {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return write!(f, "{}",self.val);
     }
@@ -170,7 +170,7 @@ fn main(){
     }
     let (arr,m) = compress(&mut a);
     let mut bit = BinaryIndexedTree::new(m);
-    let factory = MUIntFactory(MOD);
+    let factory = ModUsizeFactory(MOD);
     let mut ans = factory.new();
     let m2 = factory.new_val(2);
     let m2_inv = m2.inv();
