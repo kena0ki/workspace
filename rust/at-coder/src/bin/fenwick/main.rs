@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::{BTreeMap,BTreeSet};
 use text_io::read;
 use std::ops::{Add,Sub,Mul,Div};
@@ -45,6 +46,20 @@ impl BinaryIndexedTree{
         return ret;
     }
 }
+type Modulus = usize;
+struct MUIntFactory (Modulus);
+
+impl MUIntFactory {
+    fn new(self: &Self) -> MUInt{
+        return self.new_val(0);
+    }
+    fn new_val(self: &Self, val: usize) -> MUInt{
+        return MUInt {
+            modulus: self.0,
+            val,
+        };
+    }
+}
 
 #[derive(Debug,Clone,Copy)]
 struct MUInt{
@@ -52,7 +67,7 @@ struct MUInt{
     val: usize,
 }
 impl MUInt {
-    pub fn pow(self: &Self, power: usize) -> Self{
+    pub fn pow(self: &Self, mut power: usize) -> Self{
         let mut square = self.val;
         let mut ret = 1;
         while 0 < power {
@@ -64,7 +79,7 @@ impl MUInt {
             square %= self.modulus;
             power >>= 1;
         }
-        return MUInt {
+        return Self {
             val:ret,
             modulus: self.modulus,
         };
@@ -75,7 +90,7 @@ impl MUInt {
 }
 impl Add for MUInt {
     type Output = Self;
-    fn add(self: Self, rhs: Self) -> Self {
+    fn add(mut self: Self, rhs: Self) -> Self {
         self.val += rhs.val;
         if self.val >= self.modulus {
             self.val -= self.modulus;
@@ -85,7 +100,7 @@ impl Add for MUInt {
 }
 impl Sub for MUInt {
     type Output = Self;
-    fn sub(self: Self, rhs: Self) -> Self {
+    fn sub(mut self: Self, rhs: Self) -> Self {
         if self.val < rhs.val {
             self.val += self.modulus - rhs.val;
         } else {
@@ -96,7 +111,7 @@ impl Sub for MUInt {
 }
 impl Mul for MUInt {
     type Output = Self;
-    fn mul(self: Self, rhs: Self) -> Self {
+    fn mul(mut self: Self, rhs: Self) -> Self {
         self.val = (self.val * rhs.val) % self.modulus;
         return self;
     }
@@ -105,6 +120,11 @@ impl Div for MUInt {
     type Output = Self;
     fn div(self: Self, rhs: Self) -> Self {
         return self * rhs.inv();
+    }
+}
+impl fmt::Display for MUInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return write!(f, "{}",self.val);
     }
 }
 
@@ -143,19 +163,21 @@ pub fn compress<T:Ord+Clone+Copy>(a: &mut Vec<T>) -> (Vec<usize>, usize) {
     return (ret, size);
 }
 fn main(){
-    let div = modinv(2);
-    let large_n:usize = read!();
-    let mut large_a = vec![0usize;large_n];
-    for i in 0..large_n {
-        large_a[i]=read!();
+    let n:usize = read!();
+    let mut a = vec![0usize;n];
+    for i in 0..n {
+        a[i]=read!();
     }
-    let (arr,n) = compress(&mut large_a);
-    let mut bit = BinaryIndexedTree::new(n);
-    let mut ans = 0;
-    for i in 0..large_n {
-        let sum = bit.sum(arr[i]) * modpow(2,i) as BitType;
-        ans = (ans + sum) % MOD;
-        bit.add(arr[i],modpow(div,i+1) as BitType);
+    let (arr,m) = compress(&mut a);
+    let mut bit = BinaryIndexedTree::new(m);
+    let factory = MUIntFactory(MOD);
+    let mut ans = factory.new();
+    let m2 = factory.new_val(2);
+    let m2_inv = m2.inv();
+    for i in 0..n {
+        let sum = factory.new_val(bit.sum(arr[i]) as usize) * m2.pow(i);
+        ans = ans + sum;
+        bit.add(arr[i], m2_inv.pow(i+1).val as i64);
         println!("{:?}", bit);
     }
     println!("{}", ans);
