@@ -3,7 +3,8 @@ use std::collections::{BTreeMap,BTreeSet};
 use text_io::read;
 use std::ops::{Add,Sub,Mul,Div};
 
-const MOD: usize = 3;
+// const MOD: usize = 53;
+const MOD: usize = 998244353;
 type BitType=i64;
 #[derive(Debug)]
 struct BinaryIndexedTree{
@@ -38,8 +39,7 @@ impl BinaryIndexedTree{
             if idx<=0 {
                 break;
             }
-            println!("idx: {}", idx);
-            ret += Self::addition(ret,self.bit[idx]);
+            ret = Self::addition(ret,self.bit[idx]);
             let idx64 = idx as i64;
             idx-=(idx64 & -idx64) as usize;
         }
@@ -178,7 +178,6 @@ fn main(){
         let sum = factory.new_val(bit.sum(arr[i]) as usize) * m2.pow(i);
         ans = ans + sum;
         bit.add(arr[i], m2_inv.pow(i+1).val as i64);
-        println!("{:?}", bit);
     }
     println!("{}", ans);
 }
