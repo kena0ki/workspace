@@ -2,9 +2,28 @@
 
 use seg_tree::static_arq::StaticArq;
 use seg_tree::specs::AssignMin;
+use seg_tree::specs::ArqSpec;
 
 fn main() {
     let _ = StaticArq::<AssignMin>::new(&[]);
+}
+
+struct ArqImpl;
+impl ArqSpec for ArqImpl {
+    type S = usize;
+    type F = usize;
+    fn op(a: &Self::S, b: &Self::S) -> Self::S {
+        return a+b;
+    }
+    fn identity() -> Self::S {
+        return 0;
+    }
+    fn compose(&f: &Self::F, _: &Self::F) -> Self::F {
+        return f;
+    }
+    fn apply(&f: &Self::F, _: &Self::S, _: i64) -> Self::S {
+        return f;
+    }
 }
 
 pub mod seg_tree {
