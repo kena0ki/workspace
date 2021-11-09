@@ -1,5 +1,0 @@
-b
-[Monoid { sum: 1, min: 1 }, Monoid { sum: 1, min: 1 }, Monoid { sum: -1, min: -1 }, Monoid { sum: 1, min: 1 }, Monoid { sum: 1, min: 1 }, Monoid { sum: -1, min: -1 }, Monoid { sum: -1, min: -1 }, Monoid { sum: -1, min: -1 }]
-q: Monoid { sum: 1, min: 1 }
-ans: Monoid { sum: 0, min: 0 }
-Yes
