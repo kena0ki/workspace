@@ -1,38 +1,80 @@
-
-
+use text_io::read;
 use seg_tree::static_arq::StaticArq;
-use seg_tree::specs::AssignSum;
 use seg_tree::specs::ArqSpec;
-
-fn main() {
-    let mut seg = StaticArq::<AssignSum>::new(&[0; 10]);
-    let n = seg.query(0,9);
-    println!("{}",n);
-    println!("upd1");
-    seg.update(1,3,&10);
-    println!("upd2");
-    seg.update(3,5,&1);
-    let n = seg.query(0,9);
-    println!("{}",n);
-}
 
 struct ArqImpl;
 impl ArqSpec for ArqImpl {
-    type S = usize;
-    type F = usize;
-    fn op(a: &Self::S, b: &Self::S) -> Self::S {
-        return a+b;
+    type S = (i64, i64);
+    type F = (i64, i64);
+    fn op(&a: &Self::S, &b: &Self::S) -> Self::S {
+        println!("op: {:?},{:?}", a,b);
+        let sum = a.0+b.0;
+        return (sum, sum.min(b.1));
     }
     fn identity() -> Self::S {
-        return 0;
+        return (0, i64::MAX);
     }
     fn compose(&f: &Self::F, _: &Self::F) -> Self::F {
         return f;
     }
-    fn apply(&f: &Self::F, _: &Self::S, _: i64) -> Self::S {
-        return f;
+    fn apply(&f: &Self::F, _: &Self::S, size: i64) -> Self::S {
+        return (f.0*size, f.1);
     }
 }
+
+
+// https://atcoder.jp/contests/abc223/tasks/abc223_f
+// - input:
+// 8 8
+// (()(()))
+// 2 2 7
+// 2 2 8
+// 1 2 5
+// 2 3 4
+// 1 3 4
+// 1 3 5
+// 1 1 4
+// 1 6 8
+// - expected:
+// Yes
+// No
+// No
+fn main(){
+    let _n:usize = read!();
+    let q:usize = read!();
+    let st:String = read!();
+    let mut v = Vec::<(i64,i64)>::with_capacity(st.len());
+    for c in st.chars() {
+        let val = if c == '(' { 1 } else { -1 };
+        v.push((val, i64::MAX));
+    }
+    let mut seg = StaticArq::<ArqImpl>::new(&v);
+    println!("{:?}", seg.show());
+    println!("q: {:?}", seg.query(0,2));
+    for _ in 0..q {
+        let o:usize = read!();
+        let l:usize = read!();
+        let r:usize = read!();
+        let l =l-1;
+        let r =r-1;
+        if o == 1 {
+            let l_new = seg.query(l,l);
+            let r_new = seg.query(r,r);
+            seg.update(l,l,&r_new);
+            seg.update(r,r,&l_new);
+            println!("{:?}", seg.show());
+        } else {
+            let ans = seg.query(l,r);
+            println!("ans: {:?}", ans);
+            if ans.1 >= 0 {
+                println!("Yes");
+            } else {
+                println!("No");
+            }
+        }
+    }
+}
+
 
 pub mod seg_tree {
     pub mod specs {
@@ -127,7 +169,6 @@ pub mod seg_tree {
                 f
             }
             fn apply(&f: &Self::F, _: &Self::S, size: i64) -> Self::S {
-                println!("size: {}", size);
                 f * size
             }
         }
@@ -300,6 +341,10 @@ pub mod seg_tree {
                 }
                 T::op(&l_agg, &r_agg)
             }
+            // for debug
+            pub fn show(self: &Self) -> &[T::S] {
+                return &self.val[self.app.len()..];
+            }
         }
 
         /// An example of binary search to find the first position whose element is negative.
@@ -324,3 +369,4 @@ pub mod seg_tree {
         }
     }
 }
+
