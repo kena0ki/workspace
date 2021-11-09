@@ -2,23 +2,32 @@ use text_io::read;
 use seg_tree::static_arq::StaticArq;
 use seg_tree::specs::ArqSpec;
 
+#[derive(Clone,Copy,Debug)]
+struct Monoid {
+    sum: i64,
+    min: i64,
+}
 struct ArqImpl;
 impl ArqSpec for ArqImpl {
-    type S = (i64, i64);
-    type F = (i64, i64);
+    type S = Monoid;
+    type F = Monoid;
     fn op(&a: &Self::S, &b: &Self::S) -> Self::S {
-        println!("op: {:?},{:?}", a,b);
-        let sum = a.0+b.0;
-        return (sum, sum.min(b.1));
+        return Monoid {
+            sum: a.sum+b.sum,
+            min: a.min.min(b.min + a.sum)
+        };
     }
     fn identity() -> Self::S {
-        return (0, i64::MAX);
+        return Monoid {
+            sum: 0,
+            min: i64::MAX/2000000, // dividing not to overflow
+        };
     }
-    fn compose(&f: &Self::F, _: &Self::F) -> Self::F {
+    fn compose(&_: &Self::F, _: &Self::F) -> Self::F {
+        unimplemented!();
+    }
+    fn apply(&f: &Self::F, _: &Self::S, _: i64) -> Self::S {
         return f;
-    }
-    fn apply(&f: &Self::F, _: &Self::S, size: i64) -> Self::S {
-        return (f.0*size, f.1);
     }
 }
 
@@ -43,11 +52,15 @@ fn main(){
     let _n:usize = read!();
     let q:usize = read!();
     let st:String = read!();
-    let mut v = Vec::<(i64,i64)>::with_capacity(st.len());
+    let mut v = Vec::<Monoid>::with_capacity(st.len());
     for c in st.chars() {
         let val = if c == '(' { 1 } else { -1 };
-        v.push((val, i64::MAX));
+        v.push(Monoid {
+            sum: val,
+            min: val,
+        });
     }
+    println!("b");
     let mut seg = StaticArq::<ArqImpl>::new(&v);
     println!("{:?}", seg.show());
     println!("q: {:?}", seg.query(0,2));
@@ -66,7 +79,7 @@ fn main(){
         } else {
             let ans = seg.query(l,r);
             println!("ans: {:?}", ans);
-            if ans.1 >= 0 {
+            if ans.min == 0 {
                 println!("Yes");
             } else {
                 println!("No");
