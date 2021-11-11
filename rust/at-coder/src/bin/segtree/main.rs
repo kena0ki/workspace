@@ -300,6 +300,11 @@ pub mod seg_tree {
                 }
                 T::op(&l_agg, &r_agg)
             }
+
+            // for debug
+            pub fn show(self: &Self) -> &[T::S] {
+                return &self.val[self.app.len()..];
+            }
         }
 
         /// An example of binary search to find the first position whose element is negative.
