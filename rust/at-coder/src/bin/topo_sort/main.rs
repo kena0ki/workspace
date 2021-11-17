@@ -1,5 +1,5 @@
 use text_io::read;
-use std::collections::{HashMap,BTreeSet,VecDeque};
+use std::collections::{HashMap,BTreeSet,BinaryHeap};
 
 // https://atcoder.jp/contests/abc223/tasks/abc223_d
 //
@@ -22,25 +22,21 @@ fn main() {
         adj.entry(u).or_default().insert(v);
         *in_degree.entry(v).or_default() += 1;
     }
-
-    let mut result: Vec<usize> = Vec::with_capacity(num_vert);
+    let mut heap = BinaryHeap::with_capacity(num_vert);
     for i in 1..num_vert+1 {
-        let mut que = VecDeque::new();
-        que.push_back(i);
-        while let Some(vert) = que.pop_front() {
-            if ! in_degree.contains_key(&vert) {
-                result.push(vert);
-                for v in adj.entry(vert).or_default().iter() {
-                    let deg = in_degree.get_mut(v).unwrap();
-                    if *deg == 1 {
-                        in_degree.remove(v);
-                        if *v < i { // smaller vertex needs to be added at this time.
-                            que.push_back(*v);
-                        }
-                    } else {
-                        *deg -= 1;
-                    }
-                }
+        if ! in_degree.contains_key(&i) {
+            heap.push(OrdUsize::new(i));
+        }
+    }
+    let mut result: Vec<usize> = Vec::with_capacity(num_vert);
+    while let Some(vert) = heap.pop() {
+        result.push(vert.val);
+        for v in adj.entry(vert.val).or_default().iter() {
+            let deg = in_degree.get_mut(v).unwrap();
+            *deg -= 1;
+            if *deg == 0 {
+                in_degree.remove(v);
+                heap.push(v.into());
             }
         }
     }
@@ -52,4 +48,49 @@ fn main() {
         println!("{:?}", in_degree);
     }
 
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct OrdUsize {
+    val: usize,
+}
+
+impl OrdUsize {
+    pub fn new(val: usize) -> Self {
+        return Self { val };
+    }
+}
+
+impl From<&mut usize> for OrdUsize {
+    fn from(val: &mut usize) -> Self {
+        return Self { val: *val };
+    }
+}
+
+impl From<&usize> for OrdUsize {
+    fn from(val: &usize) -> Self {
+        return Self { val: *val };
+    }
+}
+
+impl From<usize> for OrdUsize {
+    fn from(val: usize) -> Self {
+        return Self { val };
+    }
+}
+
+// The priority queue depends on `Ord`.
+// Explicitly implement the trait so the queue becomes a min-heap
+// instead of a max-heap.
+impl Ord for OrdUsize {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        return other.val.cmp(&self.val);
+    }
+}
+
+// `PartialOrd` needs to be implemented as well.
+impl PartialOrd for OrdUsize {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
