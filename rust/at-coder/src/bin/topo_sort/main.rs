@@ -37,7 +37,6 @@ fn main() {
                         if *v < i { // smaller vertex needs to be added at this time.
                             que.push_back(*v);
                         }
-                        //que.push_back(*v);
                     } else {
                         *deg -= 1;
                     }
