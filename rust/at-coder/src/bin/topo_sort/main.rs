@@ -3,6 +3,7 @@ use std::collections::{HashMap,BTreeSet,BinaryHeap};
 
 // https://atcoder.jp/contests/abc223/tasks/abc223_d
 // topological sort
+// binary heap priority que
 //
 // input:
 // 5 4
