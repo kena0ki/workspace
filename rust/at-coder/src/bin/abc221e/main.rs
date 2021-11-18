@@ -27,6 +27,9 @@ impl ArqSpec for ArqImpl {
 
 
 // https://atcoder.jp/contests/abc221/tasks/abc221_e
+// segment tree
+// fenwick
+//
 // - input:
 // 10
 // 198495780 28463047 859606611 212983738 946249513 789612890 782044670 700201033 367981604 302538501

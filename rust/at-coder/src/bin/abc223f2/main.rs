@@ -22,6 +22,9 @@ impl ArqSpec for ArqImpl {
 
 
 // https://atcoder.jp/contests/abc223/tasks/abc223_f
+// segtree lazy segment tree
+// parentheses checking
+//
 // - input:
 // 8 8
 // (()(()))

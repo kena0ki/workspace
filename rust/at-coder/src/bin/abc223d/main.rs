@@ -2,6 +2,7 @@ use text_io::read;
 use std::collections::{HashMap,BTreeSet,VecDeque};
 
 // https://atcoder.jp/contests/abc223/tasks/abc223_d
+// topological sort
 //
 // input:
 // 5 4
