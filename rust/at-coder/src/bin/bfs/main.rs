@@ -2,8 +2,8 @@ use text_io::read;
 use std::collections::{HashMap,BTreeSet,VecDeque};
 
 //
-// https://en.wikipedia.org/wiki/Depth-first_search
-// DFS preordering non-recursive
+// https://en.wikipedia.org/wiki/Breadth-first_search
+// BFS
 //
 // graph:
 //       1
