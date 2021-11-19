@@ -1,3 +1,4 @@
+
 fn main() {
 }
 
@@ -37,17 +38,21 @@ pub mod graph {
         }
     }
 
-    /// A compact graph representation. Edges are numbered in order of insertion.
-    /// Each adjacency list consists of all edges pointing out from a given vertex.
+    use std::collections::{HashMap,BTreeSet};
+
+    #[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
+    pub struct Edge {
+        u: usize,
+        v: usize,
+        weight: i64,
+    }
+
+    /// A compact graph representation.
+    #[derive(Debug,Default,Clone,PartialEq,Eq)]
     pub struct Graph {
-        /// Maps a vertex id to the first edge in its adjacency list.
-        first: Vec<Option<usize>>, // holds the largest edge id of each vertex.
-        /// Maps an edge id to the next edge in the same adjacency list.
-        next: Vec<Option<usize>>,
-        /// Maps an edge id to the vertex that it points to.
-        endp: Vec<usize>,
-        /// weight of edges
-        weights: Vec<i64>,
+        adj: HashMap<usize,BTreeSet<usize>>, // two edges for an undirected edge
+        num_vert: usize,
+        edges: Vec<Edge>, // one edge for an undirected edge
     }
 
     impl Graph {
@@ -56,28 +61,25 @@ pub mod graph {
         /// edges that will be inserted.
         pub fn new(vmax: usize, emax_hint: usize) -> Self {
             Self {
-                first: vec![None; vmax],
-                next: Vec::with_capacity(emax_hint),
-                endp: Vec::with_capacity(emax_hint),
-                weights: Vec::with_capacity(emax_hint),
+                adj: HashMap::with_capacity(emax_hint),
+                num_vert: vmax,
+                edges: Vec::with_capacity(emax_hint),
             }
         }
 
         /// Returns the number of vertices.
         pub fn num_v(&self) -> usize {
-            self.first.len()
+            return self.num_vert;
         }
 
-        /// Returns the number of edges, double-counting undirected edges.
+        /// Returns the number of edges.
         pub fn num_e(&self) -> usize {
-            self.endp.len()
+            return self.edges.len();
         }
 
         pub fn add_weighted_edge(&mut self, u: usize, v: usize, weight: i64) {
-            self.next.push(self.first[u]); // maps the current edge id to the largest edge of the vertex at previous time.
-            self.first[u] = Some(self.num_e()); // updates the largest edge id of the vertex.
-            self.endp.push(v);
-            self.weights.push(weight);
+            self.edges.push(Edge { u, v, weight });
+            self.adj.entry(u).or_default().insert(v);
         }
 
         /// Adds a directed edge from u to v.
@@ -86,8 +88,9 @@ pub mod graph {
         }
 
         pub fn add_weighted_undirected_edge(&mut self, u: usize, v: usize, weight: i64) {
-            self.add_weighted_edge(u, v, weight);
-            self.add_weighted_edge(v, u, weight);
+            self.edges.push(Edge { u, v, weight });
+            self.adj.entry(u).or_default().insert(v);
+            self.adj.entry(v).or_default().insert(u);
         }
 
         /// An undirected edge is two directed edges. If edges are added only via
@@ -96,52 +99,46 @@ pub mod graph {
             self.add_weighted_undirected_edge(u,v,0);
         }
 
-        /// If we think of each even-numbered vertex as a variable, and its
-        /// odd-numbered successor as its negation, then we can build the
-        /// implication graph corresponding to any 2-CNF formula.
-        /// Note that u||v == !u -> v == !v -> u.
-        pub fn add_two_sat_clause(&mut self, u: usize, v: usize) {
-            self.add_edge(u ^ 1, v);
-            self.add_edge(v ^ 1, u);
-        }
-
-        /// Gets vertex u's adjacency list.
-        pub fn adj_list(&self, u: usize) -> AdjListIterator {
-            AdjListIterator {
-                graph: self,
-                next_e: self.first[u],
-            }
-        }
-
         /// Kruskal's minimum spanning tree algorithm on an undirected graph.
-        pub fn min_spanning_tree(&self) -> Vec<usize> {
-            let mut edges = (0..self.weights.len()/2).collect::<Vec<_>>();
-            edges.sort_unstable_by_key(|&e| self.weights[2*e]);
+        pub fn min_spanning_tree(&self) -> Vec<Edge> {
+            let mut edges = self.edges.to_vec();
+            edges.sort_unstable_by_key(|&e| e.weight);
 
             let mut components = DisjointSets::new(self.num_v());
-            edges
-                .into_iter()
-                .filter(|&e| components.merge(self.endp[2 * e], self.endp[2 * e + 1]))
-                .collect()
-        }
-    }
-
-    /// An iterator for convenient adjacency list traversal.
-    pub struct AdjListIterator<'a> {
-        graph: &'a Graph,
-        next_e: Option<usize>,
-    }
-
-    impl<'a> Iterator for AdjListIterator<'a> {
-        type Item = (usize, usize);
-
-        /// Produces an outgoing edge and vertex.
-        fn next(&mut self) -> Option<Self::Item> {
-            self.next_e.map(|e| {
-                let v = self.graph.endp[e];
-                self.next_e = self.graph.next[e];
-                (e, v)
-            })
+            return edges.into_iter()
+                .filter(|&e| components.merge(e.u, e.v))
+                .collect();
         }
     }
 }
+
+
+#[cfg(test)]
+mod min_span {
+    use super::*;
+
+    // https://www.geeksforgeeks.org/kruskals-minimum-spanning-tree-algorithm-greedy-algo-2/
+    #[test]
+    fn min_spanning_tree() {
+        let mut graph = graph::Graph::new(9,14);
+        graph.add_weighted_undirected_edge(0, 1, 4 );
+        graph.add_weighted_undirected_edge(0, 7, 8 );
+        graph.add_weighted_undirected_edge(1, 2, 8 );
+        graph.add_weighted_undirected_edge(1, 7, 11);
+        graph.add_weighted_undirected_edge(2, 3, 7 );
+        graph.add_weighted_undirected_edge(2, 5, 4 );
+        graph.add_weighted_undirected_edge(3, 4, 9 );
+        graph.add_weighted_undirected_edge(3, 5, 14);
+        graph.add_weighted_undirected_edge(5, 4, 10);
+        graph.add_weighted_undirected_edge(6, 5, 2 );
+        graph.add_weighted_undirected_edge(7, 6, 1 );
+        graph.add_weighted_undirected_edge(7, 8, 7 );
+        graph.add_weighted_undirected_edge(8, 2, 2 );
+        graph.add_weighted_undirected_edge(8, 6, 6 );
+        let min_tree = graph.min_spanning_tree();
+        println!("{:?}", min_tree);
+        let expected = "[Edge { u: 7, v: 6, weight: 1 }, Edge { u: 6, v: 5, weight: 2 }, Edge { u: 8, v: 2, weight: 2 }, Edge { u: 0, v: 1, weight: 4 }, Edge { u: 2, v: 5, weight: 4 }, Edge { u: 2, v: 3, weight: 7 }, Edge { u: 0, v: 7, weight: 8 }, Edge { u: 3, v: 4, weight: 9 }]";
+        assert_eq!(expected,format!("{:?}", min_tree));
+    }
+}
+
