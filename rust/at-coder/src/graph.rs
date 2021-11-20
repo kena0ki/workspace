@@ -124,27 +124,27 @@ impl Graph {
             .collect();
     }
 
-    // Single-source shortest paths on a directed graph with non-negative weights
+    // Single-source shortest paths on a graph with non-negative weights
     pub fn dijkstra(&self, u: usize) -> Vec<usize> {
-        let mut dist = vec![usize::max_value(); self.num_v()];
+        let mut distance = vec![usize::max_value(); self.num_v()];
         let mut heap = std::collections::BinaryHeap::new();
 
-        dist[u] = 0;
+        distance[u] = 0;
         heap.push((Reverse(0), 0));
-        while let Some((Reverse(dist_u), u)) = heap.pop() {
-            if dist[u] < dist_u || self.adj.get(&u).is_none() {
+        while let Some((Reverse(distance_u), u)) = heap.pop() {
+            if distance[u] < distance_u || self.adj.get(&u).is_none() {
                 continue;
             }
             let deg = self.adj.get(&u).unwrap();
             for &InDegree{idx, v} in deg.iter() {
-                let dist_v = dist_u + self.edges[idx].weight as usize;
-                if dist[v] > dist_v {
-                    dist[v] = dist_v;
-                    heap.push((Reverse(dist_v), v));
+                let distance_v = distance_u + self.edges[idx].weight as usize;
+                if distance[v] > distance_v {
+                    distance[v] = distance_v;
+                    heap.push((Reverse(distance_v), v));
                 }
             }
         }
-        return dist;
+        return distance;
     }
 }
 
