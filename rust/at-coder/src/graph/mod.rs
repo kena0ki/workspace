@@ -1,3 +1,9 @@
+//! Basic graph module without explicit support for deletion.
+//!
+//! # Panics
+//!
+//! All methods will panic if given an out-of-bounds element index.
+pub mod connectivity;
 
 /// Represents a union of disjoint sets. Each set's elements are arranged in a
 /// tree, whose root is the set's representative.
@@ -111,6 +117,20 @@ impl Graph {
     /// this funcion, the reverse of any edge e can be found at e^1.
     pub fn add_undirected_edge(&mut self, u: usize, v: usize) {
         self.add_weighted_undirected_edge(u,v,0);
+    }
+
+    /// If we think of each even-numbered vertex as a variable, and its
+    /// odd-numbered successor as its negation, then we can build the
+    /// implication graph corresponding to any 2-CNF formula.
+    /// Note that u||v == !u -> v == !v -> u.
+    pub fn add_two_sat_clause(&mut self, u: usize, v: usize) {
+        self.add_edge(u ^ 1, v);
+        self.add_edge(v ^ 1, u);
+    }
+
+    /// Gets vertex u's adjacency list.
+    pub fn adj_list(&self, u: usize) -> BTreeSet<InDegree> {
+        return self.adj.get(&u).unwrap_or(&BTreeSet::new()).to_owned();
     }
 
     /// Kruskal's minimum spanning tree algorithm on an undirected graph.
