@@ -146,25 +146,23 @@ impl<'a> ConnectivityGraph<'a> {
                 data.e_stack.push(e);
                 self.bcc(data, v, e);
                 data.lower(u, data.low[v]);
-                if data.vis[u] <= data.low[v] {
+                if data.vis[u] <= data.low[v] { // no back-edge in subtree
                     // u is a cut vertex unless it's a one-child root
                     self.num_vcc += 1;
                     while let Some(top_e) = data.e_stack.pop() {
                         self.vcc[top_e] = self.num_vcc;
-                        self.vcc[top_e ^ 1] = self.num_vcc;
-                        if e ^ top_e <= 1 {
+                        if e == top_e {
                             break;
                         }
                     }
                 }
-            } else if data.vis[v] < data.vis[u] && e ^ par != 1 {
+            } else if data.vis[v] < data.vis[u] && e != par { // found a back-edge and u is not parent of v.
                 data.lower(u, data.vis[v]);
                 data.e_stack.push(e);
             } else if v == u {
                 // e is a self-loop
                 self.num_vcc += 1;
                 self.vcc[e] = self.num_vcc;
-                self.vcc[e ^ 1] = self.num_vcc;
             }
         }
         if data.vis[u] == data.low[u] {
@@ -179,23 +177,23 @@ impl<'a> ConnectivityGraph<'a> {
         }
     }
 
-    // /// In an undirected graph, determines whether u is an articulation vertex.
-    // pub fn is_cut_vertex(&self, u: usize) -> bool {
-    //     if let Some(first_e) = self.graph.first[u] {
-    //         self.graph
-    //             .adj_list(u)
-    //             .any(|(e, _)| self.vcc[first_e] != self.vcc[e])
-    //     } else {
-    //         false
-    //     }
-    // }
+    /// In an undirected graph, determines whether u is an articulation vertex.
+    pub fn is_cut_vertex(&self, u: usize) -> bool {
+        let adj = self.graph.adj_list(u);
+        if let Some(first_e) = adj.iter().next() {
+            adj.iter().skip(1).any(|&InDegree{idx:e, ..}| self.vcc[first_e.idx] != self.vcc[e])
+        } else {
+            false
+        }
+    }
 
-    // /// In an undirected graph, determines whether e is a bridge
-    // pub fn is_cut_edge(&self, e: usize) -> bool {
-    //     let u = self.graph.endp[e ^ 1];
-    //     let v = self.graph.endp[e];
-    //     self.cc[u] != self.cc[v]
-    // }
+    /// In an undirected graph, determines whether e is a bridge
+    pub fn is_cut_edge(&self, e: usize) -> bool {
+        if let Some(edge) = self.graph.edges.get(e) {
+            return self.cc[edge.u] != self.cc[edge.v];
+        }
+        return false;
+    }
 }
 
 #[cfg(test)]
@@ -251,22 +249,22 @@ mod test {
         assert_eq!(ConnectivityGraph::new(&graph, true).two_sat_assign(), None);
     }
 
-//     #[test]
-//     fn test_biconnected() {
-//         let mut graph = Graph::new(3, 6);
-//         graph.add_undirected_edge(0, 1);
-//         graph.add_undirected_edge(1, 2);
-//         graph.add_undirected_edge(1, 2);
-// 
-//         let cg = ConnectivityGraph::new(&graph, false);
-//         let bridges = (0..graph.num_e())
-//             .filter(|&e| cg.is_cut_edge(e))
-//             .collect::<Vec<_>>();
-//         let articulation_points = (0..graph.num_v())
-//             .filter(|&u| cg.is_cut_vertex(u))
-//             .collect::<Vec<_>>();
-// 
-//         assert_eq!(bridges, vec![0, 1]);
-//         assert_eq!(articulation_points, vec![1]);
-//     }
+    #[test]
+    fn test_biconnected() {
+        let mut graph = Graph::new(3, 3);
+        graph.add_undirected_edge(0, 1);
+        graph.add_undirected_edge(1, 2);
+        graph.add_undirected_edge(1, 2);
+
+        let cg = ConnectivityGraph::new(&graph, false);
+        let bridges = (0..graph.num_e())
+            .filter(|&e| cg.is_cut_edge(e))
+            .collect::<Vec<_>>();
+        let articulation_points = (0..graph.num_v())
+            .filter(|&u| cg.is_cut_vertex(u))
+            .collect::<Vec<_>>();
+
+        assert_eq!(bridges, vec![0]);
+        assert_eq!(articulation_points, vec![1]);
+    }
 }
