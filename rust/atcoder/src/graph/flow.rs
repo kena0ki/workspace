@@ -1,22 +1,31 @@
 //! Maximum flows, matchings, and minimum cuts.
 use std::collections::btree_set::IntoIter;
 
-use super::{Graph, InDegree, Edge};
+use super::{Graph, InDegree};
 
-impl Graph {
-    pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64) {
+#[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
+pub struct FlowEdge {
+    u: usize,
+    v: usize,
+    cap: i64,
+    flow: i64,
+    cost: i64,
+}
+
+impl Graph<FlowEdge> {
+    pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
         let idx = self.num_e();
         self.adj.entry(u).or_default().insert(InDegree{ idx, v });
-        self.edges.push(Edge { u, v, weight:cap });
+        self.edges.push(FlowEdge { u, v, cap, flow:0, cost });
         self.adj.entry(v).or_default().insert(InDegree{ idx, v:u });
-        self.edges.push(Edge { v:u, u:v, weight:rcap });
+        self.edges.push(FlowEdge { v:u, u:v, cap:rcap, flow:0, cost });
     }
 }
 
 /// Representation of a network flow problem with (optional) costs.
 pub struct FlowGraph {
     /// Owned graph, managed by this FlowGraph object.
-    pub graph: Graph,
+    pub graph: Graph<FlowEdge>,
     /// Edge cost per unit flow.
     pub cost: Vec<i64>,
 }
@@ -35,8 +44,8 @@ impl FlowGraph {
 
     /// Adds an edge with specified directional capacities and cost per unit of
     /// flow. If only forward flow is allowed, rcap should be zero.
-    pub fn add_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, _cost: i64) {
-        self.graph.add_flow_edge(u,v,cap,rcap);
+    pub fn add_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
+        self.graph.add_flow_edge(u,v,cap,rcap,cost);
     }
 
     /// Dinic's algorithm to find the maximum flow from s to t where s != t.
@@ -72,7 +81,7 @@ impl FlowGraph {
         q.push_back(s);
         while let Some(u) = q.pop_front() {
             for InDegree{idx:e, v} in self.graph.adj_list(u) {
-                if dist[v] == Self::INF && flow[e] < self.graph.edges[e].weight {
+                if dist[v] == Self::INF && flow[e] < self.graph.edges[e].cap {
                     dist[v] = dist[u] + 1;
                     q.push_back(v);
                 }
@@ -97,7 +106,7 @@ impl FlowGraph {
         let mut flow_used = 0;
 
         while let Some(&InDegree{idx:e, v}) = adj[u].peek() {
-            let cap = self.graph.edges[e].weight;
+            let cap = self.graph.edges[e].cap;
             let rem_cap = (cap - flow[e]).min(flow_input - flow_used);// min(remaining capacity, remaining flow)
             if rem_cap > 0 && dist[v] == dist[u] + 1 {
                 // calculates maximum flow in a subtree (max_flow).

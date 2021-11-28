@@ -47,6 +47,12 @@ use std::cmp::Reverse;
 pub struct Edge {
     u: usize,
     v: usize,
+}
+
+#[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
+pub struct WeightedEdge {
+    u: usize,
+    v: usize,
     weight: i64,
 }
 
@@ -68,13 +74,13 @@ impl PartialOrd for InDegree {
 
 /// A compact graph representation.
 #[derive(Debug,Default,Clone,PartialEq,Eq)]
-pub struct Graph {
+pub struct Graph<T> {
     adj: HashMap<usize,BTreeSet<InDegree>>, // two edges for an undirected edge
     num_vert: usize,
-    edges: Vec<Edge>, // one edge for an undirected edge
+    edges: Vec<T>, // one edge for an undirected edge
 }
 
-impl Graph {
+impl <T> Graph<T> {
     /// Initializes a graph with vmax vertices and no edges. To reduce
     /// unnecessary allocations, emax_hint should be close to the number of
     /// edges that will be inserted.
@@ -96,28 +102,35 @@ impl Graph {
         return self.edges.len();
     }
 
-    pub fn add_weighted_edge(&mut self, u: usize, v: usize, weight: i64) {
-        let idx = self.num_e();
-        self.adj.entry(u).or_default().insert(InDegree{ idx, v });
-        self.edges.push(Edge { u, v, weight });
-    }
-
     /// Adds a directed edge from u to v.
-    pub fn add_edge(&mut self, u: usize, v: usize) {
-        self.add_weighted_edge(u,v,0);
-    }
-
-    pub fn add_weighted_undirected_edge(&mut self, u: usize, v: usize, weight: i64) {
+    fn add_adj(&mut self, u: usize, v: usize) {
         let idx = self.num_e();
         self.adj.entry(u).or_default().insert(InDegree{ idx, v });
-        self.adj.entry(v).or_default().insert(InDegree{ idx, v:u });
-        self.edges.push(Edge { u, v, weight });
     }
 
     /// An undirected edge is two directed edges. If edges are added only via
     /// this funcion, the reverse of any edge e can be found at e^1.
+    fn add_undirected_adj(&mut self, u: usize, v: usize) {
+        let idx = self.num_e();
+        self.adj.entry(u).or_default().insert(InDegree{ idx, v });
+        self.adj.entry(v).or_default().insert(InDegree{ idx, v:u });
+    }
+
+    /// Gets vertex u's adjacency list.
+    pub fn adj_list(&self, u: usize) -> BTreeSet<InDegree> {
+        return self.adj.get(&u).unwrap_or(&BTreeSet::new()).to_owned();
+    }
+}
+
+impl Graph<Edge> {
+    pub fn add_edge(&mut self, u: usize, v: usize) {
+        self.add_adj(u,v);
+        self.edges.push(Edge { u, v });
+    }
+
     pub fn add_undirected_edge(&mut self, u: usize, v: usize) {
-        self.add_weighted_undirected_edge(u,v,0);
+        self.add_undirected_adj(u,v);
+        self.edges.push(Edge { u, v });
     }
 
     /// If we think of each even-numbered vertex as a variable, and its
@@ -128,14 +141,21 @@ impl Graph {
         self.add_edge(u ^ 1, v);
         self.add_edge(v ^ 1, u);
     }
+}
 
-    /// Gets vertex u's adjacency list.
-    pub fn adj_list(&self, u: usize) -> BTreeSet<InDegree> {
-        return self.adj.get(&u).unwrap_or(&BTreeSet::new()).to_owned();
+impl Graph<WeightedEdge> {
+    pub fn add_weighted_edge(&mut self, u: usize, v: usize, weight: i64) {
+        self.add_adj(u,v);
+        self.edges.push(WeightedEdge { u, v, weight });
+    }
+
+    pub fn add_weighted_undirected_edge(&mut self, u: usize, v: usize, weight: i64) {
+        self.add_undirected_adj(u,v);
+        self.edges.push(WeightedEdge { u, v, weight });
     }
 
     /// Kruskal's minimum spanning tree algorithm on an undirected graph.
-    pub fn min_spanning_tree(&self) -> Vec<Edge> {
+    pub fn min_spanning_tree(&self) -> Vec<WeightedEdge> {
         let mut edges = self.edges.to_vec();
         edges.sort_unstable_by_key(|&e| e.weight);
 
@@ -193,7 +213,7 @@ mod graph_test {
         graph.add_weighted_undirected_edge(8, 6, 6 );
         let min_tree = graph.min_spanning_tree();
         println!("{:?}", min_tree);
-        let expected = "[Edge { u: 7, v: 6, weight: 1 }, Edge { u: 6, v: 5, weight: 2 }, Edge { u: 8, v: 2, weight: 2 }, Edge { u: 0, v: 1, weight: 4 }, Edge { u: 2, v: 5, weight: 4 }, Edge { u: 2, v: 3, weight: 7 }, Edge { u: 0, v: 7, weight: 8 }, Edge { u: 3, v: 4, weight: 9 }]";
+        let expected = "[WeightedEdge { u: 7, v: 6, weight: 1 }, WeightedEdge { u: 6, v: 5, weight: 2 }, WeightedEdge { u: 8, v: 2, weight: 2 }, WeightedEdge { u: 0, v: 1, weight: 4 }, WeightedEdge { u: 2, v: 5, weight: 4 }, WeightedEdge { u: 2, v: 3, weight: 7 }, WeightedEdge { u: 0, v: 7, weight: 8 }, WeightedEdge { u: 3, v: 4, weight: 9 }]";
         assert_eq!(expected,format!("{:?}", min_tree));
     }
 

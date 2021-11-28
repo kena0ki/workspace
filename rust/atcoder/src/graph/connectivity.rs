@@ -1,6 +1,7 @@
 //! Graph connectivity structures.
 use super::Graph;
 use super::InDegree;
+use super::Edge;
 
 /// Helper struct that carries data needed for the depth-first searches in
 /// ConnectivityGraph's constructor.
@@ -47,7 +48,7 @@ impl ConnectivityData {
 /// Multiple-edges and self-loops are correctly handled.
 pub struct ConnectivityGraph<'a> {
     /// Immutable graph, frozen for the lifetime of the ConnectivityGraph object.
-    pub graph: &'a Graph,
+    pub graph: &'a Graph<Edge>,
     /// ID of a vertex's CC, SCC or 2ECC, whichever applies. Range 1 to num_cc.
     pub cc: Vec<usize>,
     /// ID of an edge's 2VCC, where applicable. Ranges from 1 to num_vcc.
@@ -66,7 +67,7 @@ impl<'a> ConnectivityGraph<'a> {
     /// - is_directed == true on undirected graph: CCs
     /// - is_directed == false on undirected graph: 2ECCs and 2VCCs
     /// - is_directed == false on directed graph: undefined behavior
-    pub fn new(graph: &'a Graph, is_directed: bool) -> Self {
+    pub fn new(graph: &'a Graph<Edge>, is_directed: bool) -> Self {
         let mut connect = Self {
             graph,
             cc: vec![0; graph.num_v()],
