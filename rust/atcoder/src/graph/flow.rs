@@ -8,17 +8,18 @@ pub struct FlowEdge {
     u: usize,
     v: usize,
     cap: i64,
-    flow: i64,
     cost: i64,
 }
 
 impl Graph<FlowEdge> {
     pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
         let idx = self.num_e();
+        // add an edge
         self.adj.entry(u).or_default().insert(InDegree{ idx, v });
-        self.edges.push(FlowEdge { u, v, cap, flow:0, cost });
-        self.adj.entry(v).or_default().insert(InDegree{ idx, v:u });
-        self.edges.push(FlowEdge { v:u, u:v, cap:rcap, flow:0, cost });
+        self.edges.push(FlowEdge { u, v, cap, cost });
+        // add a residual edge
+        self.adj.entry(v).or_default().insert(InDegree{ idx: idx+1, v:u });
+        self.edges.push(FlowEdge { v:u, u:v, cap:rcap, cost: -cost });
     }
 }
 
@@ -26,8 +27,6 @@ impl Graph<FlowEdge> {
 pub struct FlowGraph {
     /// Owned graph, managed by this FlowGraph object.
     pub graph: Graph<FlowEdge>,
-    /// Edge cost per unit flow.
-    pub cost: Vec<i64>,
 }
 
 impl FlowGraph {
@@ -38,7 +37,6 @@ impl FlowGraph {
     pub fn new(vmax: usize, emax_hint: usize) -> Self {
         Self {
             graph: Graph::new(vmax, 2 * emax_hint),
-            cost: Vec::with_capacity(2 * emax_hint),
         }
     }
 
@@ -56,11 +54,12 @@ impl FlowGraph {
     /// # Panics
     ///
     /// Panics if the maximum flow is 2^63 or larger.
-    pub fn dinic(&self, s: usize, t: usize) -> (i64, Vec<i64>) {
+    pub fn dinic(&self, s: usize, t: usize) -> (i64, Vec<i64>, Vec<i64>) {
         let mut flow = vec![0; self.graph.num_e()];
         let mut max_flow = 0;
+        let mut dist;
         loop {
-            let dist = self.dinic_search(s, &flow);
+            dist = self.dinic_search(s, &flow);
             if dist[t] == Self::INF {
                 break;
             }
@@ -70,7 +69,7 @@ impl FlowGraph {
                 .collect::<Vec<_>>();
             max_flow += self.dinic_augment(s, t, Self::INF, &dist, &mut adj_iters, &mut flow);
         }
-        (max_flow, flow)
+        (max_flow, flow, dist)
     }
 
     // Compute BFS distances to restrict attention to shortest path edges.
@@ -126,92 +125,103 @@ impl FlowGraph {
         flow_used
     }
 
-//    /// After running maximum flow, use this to recover the dual minimum cut.
-//    pub fn min_cut(&self, dist: &[i64]) -> Vec<usize> {
-//        (0..self.graph.num_e())
-//            .filter(|&e| {
-//                let u = self.graph.endp[e ^ 1];
-//                let v = self.graph.endp[e];
-//                dist[u] < Self::INF && dist[v] == Self::INF
-//            })
-//            .collect()
-//    }
-//
-//    /// Among all s-t maximum flows, finds one with minimum cost, assuming
-//    /// s != t and no negative-cost cycles.
-//    ///
-//    /// # Panics
-//    ///
-//    /// Panics if the flow or cost overflow a 64-bit signed integer.
-//    pub fn mcf(&self, s: usize, t: usize) -> (i64, i64, Vec<i64>) {
-//        let mut pot = vec![0; self.graph.num_v()];
-//
-//        // Bellman-Ford deals with negative-cost edges at initialization.
-//        for _ in 1..self.graph.num_v() {
-//            for e in 0..self.graph.num_e() {
-//                if self.cap[e] > 0 {
-//                    let u = self.graph.endp[e ^ 1];
-//                    let v = self.graph.endp[e];
-//                    pot[v] = pot[v].min(pot[u] + self.cost[e]);
-//                }
-//            }
-//        }
-//
-//        let mut flow = vec![0; self.graph.num_e()];
-//        let (mut min_cost, mut max_flow) = (0, 0);
-//        loop {
-//            let par = self.mcf_search(s, &flow, &mut pot);
-//            if par[t] == None {
-//                break;
-//            }
-//            let (dc, df) = self.mcf_augment(t, &par, &mut flow);
-//            min_cost += dc;
-//            max_flow += df;
-//        }
-//        (min_cost, max_flow, flow)
-//    }
-//
-//    // Maintains Johnson's potentials to prevent negative-cost residual edges.
-//    // This allows running Dijkstra instead of the slower Bellman-Ford.
-//    fn mcf_search(&self, s: usize, flow: &[i64], pot: &mut [i64]) -> Vec<Option<usize>> {
-//        let mut vis = vec![false; self.graph.num_v()];
-//        let mut dist = vec![Self::INF; self.graph.num_v()];
-//        let mut par = vec![None; self.graph.num_v()];
-//
-//        dist[s] = 0;
-//        while let Some(u) = (0..self.graph.num_v())
-//            .filter(|&u| !vis[u] && dist[u] < Self::INF)
-//            .min_by_key(|&u| dist[u] - pot[u])
-//        {
-//            vis[u] = true;
-//            pot[u] = dist[u];
-//            for (e, v) in self.graph.adj_list(u) {
-//                if dist[v] > dist[u] + self.cost[e] && flow[e] < self.cap[e] {
-//                    dist[v] = dist[u] + self.cost[e];
-//                    par[v] = Some(e);
-//                }
-//            }
-//        }
-//        par
-//    }
-//
-//    // Pushes flow along an augmenting path of minimum cost.
-//    fn mcf_augment(&self, t: usize, par: &[Option<usize>], flow: &mut [i64]) -> (i64, i64) {
-//        let (mut dc, mut df) = (0, Self::INF);
-//        let mut u = t;
-//        while let Some(e) = par[u] {
-//            df = df.min(self.cap[e] - flow[e]);
-//            u = self.graph.endp[e ^ 1];
-//        }
-//        u = t;
-//        while let Some(e) = par[u] {
-//            flow[e] += df;
-//            flow[e ^ 1] -= df;
-//            dc += df * self.cost[e];
-//            u = self.graph.endp[e ^ 1];
-//        }
-//        (dc, df)
-//    }
+    /// After running maximum flow, use this to recover the dual minimum cut.
+    pub fn min_cut(&self, dist: &[i64]) -> Vec<usize> {
+        (0..self.graph.num_e())
+            .filter(|&e| { // filter blocked edges
+                let edge = self.graph.edges[e];
+                dist[edge.u] < Self::INF && dist[edge.v] == Self::INF
+            })
+            .collect()
+    }
+
+    /// Among all s-t maximum flows, finds one with minimum cost, assuming
+    /// s != t and no negative-cost cycles.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the flow or cost overflow a 64-bit signed integer.
+    pub fn mcf(&self, s: usize, t: usize) -> (i64, i64, Vec<i64>) {
+        let mut pot = vec![0; self.graph.num_v()];
+
+        // Bellman-Ford deals with negative-cost edges at initialization.
+        for _ in 1..self.graph.num_v() {
+            for e in 0..self.graph.num_e() {
+                let edge = &self.graph.edges[e];
+                if edge.cap > 0 {
+                    pot[edge.v] = pot[edge.v].min(pot[edge.u] + edge.cost);
+                }
+            }
+        }
+
+        let mut flow = vec![0; self.graph.num_e()];
+        let (mut min_cost, mut max_flow) = (0, 0);
+        loop {
+            let par = self.mcf_search(s, &flow, &mut pot); // find shortest path from t to u.
+            if par[t] == None {
+                break;
+            }
+            let (dc, df) = self.mcf_augment(t, &par, &mut flow);
+            min_cost += dc;
+            max_flow += df;
+        }
+        (min_cost, max_flow, flow)
+    }
+
+    // Maintains Johnson's potentials to prevent negative-cost residual edges.
+    // This allows running Dijkstra instead of the slower Bellman-Ford.
+    fn mcf_search(&self, s: usize, flow: &[i64], pot: &mut [i64]) -> Vec<Option<usize>> {
+        let mut vis = vec![false; self.graph.num_v()];
+        let mut dist = vec![Self::INF; self.graph.num_v()];
+        let mut par = vec![None; self.graph.num_v()];
+
+        dist[s] = 0;
+        while let Some(u) = (0..self.graph.num_v())
+            .filter(|&u| !vis[u] && dist[u] < Self::INF)
+            .min_by_key(|&u| dist[u] - pot[u])
+        {
+            vis[u] = true;
+            pot[u] = dist[u];
+            for InDegree{idx:e, v} in self.graph.adj_list(u) {
+                println!("e: {:?}, v: {:?}", e, v);
+                let edge = &self.graph.edges[e];
+                if dist[v] > dist[u] + edge.cost && flow[e] < edge.cap {
+                    dist[v] = dist[u] + edge.cost;
+                    par[v] = Some(e);
+                }
+            }
+        }
+        par
+    }
+
+    // Pushes flow along an augmenting path of minimum cost.
+    fn mcf_augment(&self, t: usize, par: &[Option<usize>], flow: &mut [i64]) -> (i64, i64) {
+        let (mut dc, mut df) = (0, Self::INF);
+        let mut u = t;
+        println!("start");
+        let mut i=0;
+        while let Some(e) = par[u] {
+            let edge = &self.graph.edges[e];
+            df = df.min(edge.cap - flow[e]);
+            u = edge.u;
+            println!("u: {}", u);
+            i+=1;
+            if i>10 {
+                break;
+            }
+
+        }
+        println!("end");
+        u = t;
+        while let Some(e) = par[u] {
+            let edge = &self.graph.edges[e];
+            flow[e] += df;
+            flow[e ^ 1] -= df;
+            dc += df * edge.cost;
+            u = edge.u;
+        }
+        (dc, df)
+    }
 }
 
 #[cfg(test)]
@@ -227,83 +237,88 @@ mod test {
         graph.add_edge(2, 4, 2, 0, 0);
         graph.add_edge(3, 4, 2, 0, 0);
 
-        let (max, flow) = graph.dinic(0, 4);
+        let (max, flow, dist) = graph.dinic(0, 4);
         println!("max: {:?}", max);
         println!("flow: {:?}", flow);
+        println!("dist: {:?}", dist);
         assert_eq!(max, 3);
     }
 
     #[test]
-    fn test_dinic() {
+    fn test_min_cut() {
         let mut graph = FlowGraph::new(3, 2);
         graph.add_edge(0, 1, 4, 0, 0);
         graph.add_edge(1, 2, 3, 0, 0);
 
-        let flow = graph.dinic(0, 2).0;
-        assert_eq!(flow, 3);
+        let (max, flow, dist) = graph.dinic(0, 2);
+        println!("max: {:?}", max);
+        println!("flow: {:?}", flow);
+        println!("dist: {:?}", dist);
+        assert_eq!(max, 3);
+        assert_eq!(&[2], &*graph.min_cut(&dist));
     }
 
-//    #[test]
-//    fn test_min_cost_flow() {
-//        let mut graph = FlowGraph::new(4, 4);
-//        graph.add_edge(0, 1, 10, 0, -10);
-//        graph.add_edge(1, 2, 7, 0, 8);
-//        graph.add_edge(2, 3, 7, 0, 8);
-//        graph.add_edge(1, 3, 7, 0, 10);
-//
-//        let (cost, flow, _) = graph.mcf(0, 3);
-//        assert_eq!(cost, 18);
-//        assert_eq!(flow, 10);
-//    }
-//
-//    #[test]
-//    fn test_max_matching() {
-//        let mut graph = FlowGraph::new(14, 4);
-//
-//        let source = 0;
-//        let sink = 13;
-//
-//        //Vertex indices of "left hand side" of bipartite graph go from [left_start, right_start)
-//        let left_start = 1;
-//        //Vertex indices of "right hand side" of bipartite graph go from [right_start, sink)
-//        let right_start = 7;
-//
-//        //Initialize source / sink connections; both left & right have 6 nodes
-//        for lhs_vertex in left_start..left_start + 6 {
-//            graph.add_edge(source, lhs_vertex, 1, 0, 0);
-//        }
-//
-//        for rhs_vertex in right_start..right_start + 6 {
-//            graph.add_edge(rhs_vertex, sink, 1, 0, 0);
-//        }
-//
-//        graph.add_edge(left_start + 0, right_start + 1, 1, 0, 0);
-//        graph.add_edge(left_start + 0, right_start + 2, 1, 0, 0);
-//        graph.add_edge(left_start + 2, right_start + 0, 1, 0, 0);
-//        graph.add_edge(left_start + 2, right_start + 3, 1, 0, 0);
-//        graph.add_edge(left_start + 3, right_start + 2, 1, 0, 0);
-//        graph.add_edge(left_start + 4, right_start + 2, 1, 0, 0);
-//        graph.add_edge(left_start + 4, right_start + 3, 1, 0, 0);
-//        graph.add_edge(left_start + 5, right_start + 5, 1, 0, 0);
-//
-//        let (flow_amt, flow) = graph.dinic(source, sink);
-//        assert_eq!(flow_amt, 5);
-//
-//        //L->R edges in maximum matching
-//        let left_right_edges = flow
-//            .into_iter()
-//            .enumerate()
-//            .filter(|&(_e, f)| f > 0)
-//            //map to u->v
-//            .map(|(e, _f)| (graph.graph.endp[e ^ 1], graph.graph.endp[e]))
-//            //leave out source and sink nodes
-//            .filter(|&(u, v)| u != source && v != sink)
-//            .collect::<Vec<_>>();
-//
-//        assert_eq!(
-//            left_right_edges,
-//            vec![(1, 8), (3, 7), (4, 9), (5, 10), (6, 12)]
-//        );
-//    }
+    #[test]
+    fn test_min_cost_flow() {
+        let mut graph = FlowGraph::new(4, 4);
+        graph.add_edge(0, 1, 10, 0, -10);
+        graph.add_edge(1, 2, 7, 0, 8);
+        graph.add_edge(2, 3, 7, 0, 8);
+        graph.add_edge(1, 3, 7, 0, 10);
+
+        let (cost, flow, _) = graph.mcf(0, 3);
+        assert_eq!(cost, 18);
+        assert_eq!(flow, 10);
+    }
+
+    #[test]
+    fn test_max_matching() {
+        let mut graph = FlowGraph::new(14, 4);
+
+        let source = 0;
+        let sink = 13;
+
+        //Vertex indices of "left hand side" of bipartite graph go from [left_start, right_start)
+        let left_start = 1;
+        //Vertex indices of "right hand side" of bipartite graph go from [right_start, sink)
+        let right_start = 7;
+
+        //Initialize source / sink connections; both left & right have 6 nodes
+        for lhs_vertex in left_start..left_start + 6 {
+            graph.add_edge(source, lhs_vertex, 1, 0, 0);
+        }
+
+        for rhs_vertex in right_start..right_start + 6 {
+            graph.add_edge(rhs_vertex, sink, 1, 0, 0);
+        }
+
+        graph.add_edge(left_start + 0, right_start + 1, 1, 0, 0);
+        graph.add_edge(left_start + 0, right_start + 2, 1, 0, 0);
+        graph.add_edge(left_start + 2, right_start + 0, 1, 0, 0);
+        graph.add_edge(left_start + 2, right_start + 3, 1, 0, 0);
+        graph.add_edge(left_start + 3, right_start + 2, 1, 0, 0);
+        graph.add_edge(left_start + 4, right_start + 2, 1, 0, 0);
+        graph.add_edge(left_start + 4, right_start + 3, 1, 0, 0);
+        graph.add_edge(left_start + 5, right_start + 5, 1, 0, 0);
+
+        let (flow_amt, flow, _) = graph.dinic(source, sink);
+        assert_eq!(flow_amt, 5);
+
+        //L->R edges in maximum matching
+        let left_right_edges = flow
+            .into_iter()
+            .enumerate()
+            .filter(|&(_e, f)| f > 0)
+            //map to u->v
+            .map(|(e, _f)| (graph.graph.edges[e].u, graph.graph.edges[e].v))
+            //leave out source and sink nodes
+            .filter(|&(u, v)| u != source && v != sink)
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            left_right_edges,
+            vec![(1, 8), (3, 7), (4, 9), (5, 10), (6, 12)]
+        );
+    }
 }
 

@@ -166,8 +166,9 @@ impl Graph<WeightedEdge> {
     }
 
     // Single-source shortest paths on a graph with non-negative weights
-    pub fn dijkstra(&self, u: usize) -> Vec<usize> {
+    pub fn dijkstra(&self, u: usize) -> (Vec<usize>, HashMap<usize,usize>) {
         let mut distance = vec![usize::max_value(); self.num_v()];
+        let mut prev = HashMap::with_capacity(self.num_v());
         let mut heap = std::collections::BinaryHeap::new();
 
         distance[u] = 0;
@@ -180,17 +181,20 @@ impl Graph<WeightedEdge> {
             for &InDegree{idx, v} in deg.iter() {
                 let distance_v = distance_u + self.edges[idx].weight as usize;
                 if distance[v] > distance_v {
+                    prev.insert(v,u);
                     distance[v] = distance_v;
                     heap.push((Reverse(distance_v), v));
                 }
             }
         }
-        return distance;
+        return (distance, prev);
     }
 }
 
 #[cfg(test)]
 mod graph_test {
+    use std::collections::VecDeque;
+
     use super::*;
 
     // https://www.geeksforgeeks.org/kruskals-minimum-spanning-tree-algorithm-greedy-algo-2/
@@ -235,9 +239,17 @@ mod graph_test {
         graph.add_weighted_undirected_edge(6, 7, 1);
         graph.add_weighted_undirected_edge(6, 8, 6);
         graph.add_weighted_undirected_edge(7, 8, 7);
-        let min_paths = graph.dijkstra(0);
-        assert_eq!("[0, 4, 12, 19, 21, 11, 9, 8, 14]", format!("{:?}", min_paths));
-        println!("{:?}", min_paths);
+        let (min_dists, prevs) = graph.dijkstra(0);
+        assert_eq!([0, 4, 12, 19, 21, 11, 9, 8, 14], &*min_dists);
+        println!("prevs: {:?}", prevs);
+        let mut v = 8;
+        let mut shortest_path = VecDeque::from([v]);
+        while let Some(&prev) = prevs.get(&v) {
+            println!("prev: {}",prev);
+            shortest_path.push_front(prev);
+            v = prev;
+        }
+        assert_eq!([0, 1, 2, 8], shortest_path.make_contiguous());
     }
 }
 
