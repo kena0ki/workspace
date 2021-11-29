@@ -240,6 +240,13 @@ impl FlowGraph {
         }
         (dc, df)
     }
+
+    pub fn debug_print(&self, residual: bool) {
+        let step = if residual { 1 } else { 2 };
+        for e in self.graph.edges.iter().step_by(step) {
+            println!("{:?}", e);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -256,7 +263,7 @@ mod test {
         graph.add_edge(3, 4, 2, 0, 0);
 
         let max = graph.dinic(0, 4);
-        println!("max: {:?}", max);
+        graph.debug_print(false);
         assert_eq!(max, 3);
     }
 
