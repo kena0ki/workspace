@@ -169,7 +169,7 @@ impl Graph<WeightedEdge> {
         let mut heap = std::collections::BinaryHeap::new();
 
         distance[u] = 0;
-        heap.push((Reverse(0), 0));
+        heap.push((Reverse(0), u));
         while let Some((Reverse(distance_u), u)) = heap.pop() {
             if distance[u] < distance_u || self.adj.get(&u).is_none() {
                 continue;
@@ -247,6 +247,17 @@ mod graph_test {
             v = prev;
         }
         assert_eq!([0, 1, 2, 8], shortest_path.make_contiguous());
+    }
+
+    #[test]
+    fn dijkstra2() {
+        let mut graph = Graph::new(3, 3);
+        graph.add_weighted_edge(0, 1, 7);
+        graph.add_weighted_edge(1, 2, 3);
+        graph.add_weighted_edge(2, 0, 5);
+
+        let (dist, _) = graph.dijkstra(1);
+        assert_eq!(dist, vec![8, 0, 3]);
     }
 }
 
