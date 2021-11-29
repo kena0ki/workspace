@@ -102,14 +102,11 @@ impl <T> Graph<T> {
         return self.edges.len();
     }
 
-    /// Adds a directed edge from u to v.
     fn add_adj(&mut self, u: usize, v: usize) {
         let idx = self.num_e();
         self.adj.entry(u).or_default().insert(InDegree{ idx, v });
     }
 
-    /// An undirected edge is two directed edges. If edges are added only via
-    /// this funcion, the reverse of any edge e can be found at e^1.
     fn add_undirected_adj(&mut self, u: usize, v: usize) {
         let idx = self.num_e();
         self.adj.entry(u).or_default().insert(InDegree{ idx, v });
