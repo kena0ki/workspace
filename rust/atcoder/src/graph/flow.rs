@@ -180,7 +180,7 @@ impl FlowGraph {
 
         let (mut min_cost, mut max_flow) = (0, 0);
         loop {
-            let par = self.mcf_search(s, &mut pot); // find shortest path from t to u.
+            let par = self.mcf_search(s, &mut pot); // find shortest path from s to t.
             if par[t] == None {
                 break;
             }
