@@ -220,16 +220,10 @@ impl FlowGraph {
     fn mcf_augment(&mut self, t: usize, par: &[Option<usize>]) -> (i64, i64) {
         let (mut dc, mut df) = (0, Self::INF);
         let mut u = t;
-        let mut i=0;
         while let Some(e) = par[u] {
             let edge = &self.graph.edges[e];
             df = df.min(edge.cap - edge.flow);
             u = edge.u;
-            i+=1;
-            if i>10 {
-                break;
-            }
-
         }
         u = t;
         while let Some(e) = par[u] {
