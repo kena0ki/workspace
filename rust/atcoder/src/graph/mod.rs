@@ -5,6 +5,7 @@
 //! All methods will panic if given an out-of-bounds element index.
 pub mod connectivity;
 pub mod flow;
+pub mod grid;
 
 /// Represents a union of disjoint sets. Each set's elements are arranged in a
 /// tree, whose root is the set's representative.
@@ -80,7 +81,7 @@ pub struct Graph<T> {
     edges: Vec<T>, // one edge for an undirected edge
 }
 
-impl <T> Graph<T> {
+impl <T:std::fmt::Debug> Graph<T> {
     /// Initializes a graph with vmax vertices and no edges. To reduce
     /// unnecessary allocations, emax_hint should be close to the number of
     /// edges that will be inserted.
@@ -116,6 +117,12 @@ impl <T> Graph<T> {
     /// Gets vertex u's adjacency list.
     pub fn adj_list(&self, u: usize) -> BTreeSet<InDegree> {
         return self.adj.get(&u).unwrap_or(&BTreeSet::new()).to_owned();
+    }
+
+    pub fn debug_print(&self) {
+        for e in &self.edges {
+            println!("{:?}", e);
+        }
     }
 }
 
