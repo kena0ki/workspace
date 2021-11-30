@@ -6,40 +6,7 @@
 pub mod connectivity;
 pub mod flow;
 pub mod grid;
-
-/// Represents a union of disjoint sets. Each set's elements are arranged in a
-/// tree, whose root is the set's representative.
-#[derive(Debug,Default,Clone)]
-pub struct DisjointSets {
-    parent: Vec<usize>,
-}
-
-impl DisjointSets {
-    /// Initializes disjoint sets containing one element each.
-    pub fn new(size: usize) -> Self {
-        Self {
-            parent: (0..size).collect(),
-        }
-    }
-
-    /// Finds the set's representative. Do path compression along the way to make
-    /// future queries faster.
-    pub fn find(&mut self, u: usize) -> usize {
-        let pu = self.parent[u];
-        if pu != u {
-            self.parent[u] = self.find(pu);
-        }
-        self.parent[u]
-    }
-
-    /// Merges the sets containing u and v into a single set containing their
-    /// union. Returns true if u and v were previously in different sets.
-    pub fn merge(&mut self, u: usize, v: usize) -> bool {
-        let (pu, pv) = (self.find(u), self.find(v));
-        self.parent[pu] = pv;
-        pu != pv
-    }
-}
+pub mod disjoint_set;
 
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::cmp::Reverse;
@@ -136,15 +103,6 @@ impl Graph<Edge> {
         self.add_undirected_adj(u,v);
         self.edges.push(Edge { u, v });
     }
-
-    /// If we think of each even-numbered vertex as a variable, and its
-    /// odd-numbered successor as its negation, then we can build the
-    /// implication graph corresponding to any 2-CNF formula.
-    /// Note that u||v == !u -> v == !v -> u.
-    pub fn add_two_sat_clause(&mut self, u: usize, v: usize) {
-        self.add_edge(u ^ 1, v);
-        self.add_edge(v ^ 1, u);
-    }
 }
 
 impl Graph<WeightedEdge> {
@@ -163,7 +121,7 @@ impl Graph<WeightedEdge> {
         let mut edges = self.edges.to_vec();
         edges.sort_unstable_by_key(|&e| e.weight);
 
-        let mut components = DisjointSets::new(self.num_v());
+        let mut components = disjoint_set::DisjointSets::new(self.num_v());
         return edges.into_iter()
             .filter(|&e| components.merge(e.u, e.v))
             .collect();

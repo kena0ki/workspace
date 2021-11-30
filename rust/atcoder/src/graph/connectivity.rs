@@ -3,6 +3,17 @@ use super::Graph;
 use super::InDegree;
 use super::Edge;
 
+impl Graph<Edge> {
+    /// If we think of each even-numbered vertex as a variable, and its
+    /// odd-numbered successor as its negation, then we can build the
+    /// implication graph corresponding to any 2-CNF formula.
+    /// Note that u||v == !u -> v == !v -> u.
+    pub fn add_two_sat_clause(&mut self, u: usize, v: usize) {
+        self.add_edge(u ^ 1, v);
+        self.add_edge(v ^ 1, u);
+    }
+}
+
 /// Helper struct that carries data needed for the depth-first searches in
 /// ConnectivityGraph's constructor.
 struct ConnectivityData {
