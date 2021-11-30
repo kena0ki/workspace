@@ -1,5 +1,6 @@
 use super::Graph;
 use super::Edge;
+use super::WeightedEdge;
 
 #[derive(Debug,Default,Clone,PartialEq,Eq)]
 pub struct Grid<T> {
@@ -61,10 +62,25 @@ impl Grid<Edge> {
     }
     pub fn construct_node<F>(&mut self, x: usize, y:usize, delta_x: &[i64], delta_y: &[i64], should_skip: F)
         where F: Fn(usize,usize) -> bool {
-        // let delta_x = [-1,1,0,0];
-        // let delta_y = [0,0,-1,1];
         for (u,v) in self.edges_from_node(x,y,delta_x,delta_y,should_skip) {
             self.add_edge(u,v);
+        }
+    }
+    pub fn debug_print(&self) {
+        for edge in &self.graph.edges {
+            println!("{:?}: {:?} -> {:?}", edge, self.node_to_coord(edge.u), self.node_to_coord(edge.v));
+        }
+    }
+}
+
+impl Grid<WeightedEdge> {
+    pub fn add_weighted_edge(&mut self, u:usize,v:usize, weight: i64) {
+        self.graph.add_weighted_edge(u,v, weight);
+    }
+    pub fn construct_node<F>(&mut self, x: usize, y:usize, weight: i64, delta_x: &[i64], delta_y: &[i64], should_skip: F)
+        where F: Fn(usize,usize) -> bool {
+        for (u,v) in self.edges_from_node(x,y,delta_x,delta_y,should_skip) {
+            self.add_weighted_edge(u,v,weight);
         }
     }
     pub fn debug_print(&self) {
@@ -77,6 +93,8 @@ impl Grid<Edge> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::VecDeque;
+
     use super::*;
     #[test]
     fn grid() {
@@ -123,5 +141,35 @@ mod test {
             assert_eq!(expectd[i].0, grid.node_to_coord(u));
             assert_eq!(expectd[i].1, grid.node_to_coord(v));
         }
+    }
+
+    #[test]
+    fn grid_shortest_path() {
+        let x=3;
+        let y=3;
+        let dx = [-1,1,0,0];
+        let dy = [0,0,-1,1];
+        let weight = [
+            [1,1,1],
+            [2,5,1],
+            [1,3,1],
+        ];
+        let graph = Graph::<WeightedEdge>::new(x*y, (x*y)*dx.len());
+        let mut grid = Grid::new(x, y, graph);
+        for x1 in 0..x {
+            for y1 in 0..y {
+                grid.construct_node(x1,y1,weight[y1][x1],&dx,&dy,|_,_| false);
+            }
+        }
+        let (dists, prev) = grid.graph.dijkstra(grid.coord_to_node(2,2));
+        assert_eq!(4, dists[0]);
+        let mut v = 0;
+        let mut que = VecDeque::from([grid.node_to_coord(v)]);
+        while let Some(&u) = prev.get(&v) {
+            que.push_front(grid.node_to_coord(u));
+            v=u;
+        }
+        let expected_path = [(2, 2), (2, 1), (2, 0), (1, 0), (0, 0)];
+        assert_eq!(expected_path, que.make_contiguous());
     }
 }
