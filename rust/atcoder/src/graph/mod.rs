@@ -41,7 +41,7 @@ impl DisjointSets {
     }
 }
 
-use std::collections::{HashMap,BTreeSet};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::cmp::Reverse;
 
 #[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
@@ -193,12 +193,21 @@ impl Graph<WeightedEdge> {
         }
         return (distance, prev);
     }
+
+    pub fn dijkstra_to(&self, src: usize, dest: usize) -> (usize, Vec<usize>) {
+        let (dists, prev) = self.dijkstra(src);
+        let mut v = dest;
+        let mut que = VecDeque::from([v]);
+        while let Some(&u) = prev.get(&v) {
+            que.push_front(u);
+            v=u;
+        }
+        return (dists[dest], que.into());
+    }
 }
 
 #[cfg(test)]
 mod graph_test {
-    use std::collections::VecDeque;
-
     use super::*;
 
     // https://www.geeksforgeeks.org/kruskals-minimum-spanning-tree-algorithm-greedy-algo-2/
@@ -225,9 +234,22 @@ mod graph_test {
         assert_eq!(expected,format!("{:?}", min_tree));
     }
 
-    // https://www.geeksforgeeks.org/dijkstras-algorithm-for-adjacency-list-representation-greedy-algo-8/
     #[test]
     fn dijkstra() {
+        let mut graph = Graph::new(3, 3);
+        graph.add_weighted_edge(0, 1, 7);
+        graph.add_weighted_edge(1, 2, 3);
+        graph.add_weighted_edge(2, 0, 5);
+
+        let (dist, prev) = graph.dijkstra(1);
+        assert_eq!(dist, vec![8, 0, 3]);
+        let expected_prev = HashMap::from([(0,2),(2,1)]);
+        assert_eq!(expected_prev, prev);
+    }
+
+    // https://www.geeksforgeeks.org/dijkstras-algorithm-for-adjacency-list-representation-greedy-algo-8/
+    #[test]
+    fn dijkstra_to() {
         let mut graph = Graph::new(9,28);
         graph.add_weighted_undirected_edge(0, 1, 4);
         graph.add_weighted_undirected_edge(0, 7, 8);
@@ -243,28 +265,9 @@ mod graph_test {
         graph.add_weighted_undirected_edge(6, 7, 1);
         graph.add_weighted_undirected_edge(6, 8, 6);
         graph.add_weighted_undirected_edge(7, 8, 7);
-        let (min_dists, prevs) = graph.dijkstra(0);
-        assert_eq!([0, 4, 12, 19, 21, 11, 9, 8, 14], &*min_dists);
-        println!("prevs: {:?}", prevs);
-        let mut v = 8;
-        let mut shortest_path = VecDeque::from([v]);
-        while let Some(&prev) = prevs.get(&v) {
-            println!("prev: {}",prev);
-            shortest_path.push_front(prev);
-            v = prev;
-        }
-        assert_eq!([0, 1, 2, 8], shortest_path.make_contiguous());
-    }
-
-    #[test]
-    fn dijkstra2() {
-        let mut graph = Graph::new(3, 3);
-        graph.add_weighted_edge(0, 1, 7);
-        graph.add_weighted_edge(1, 2, 3);
-        graph.add_weighted_edge(2, 0, 5);
-
-        let (dist, _) = graph.dijkstra(1);
-        assert_eq!(dist, vec![8, 0, 3]);
+        let (dist, path) = graph.dijkstra_to(0, 8);
+        assert_eq!(14, dist);
+        assert_eq!([0, 1, 2, 8], &*path);
     }
 }
 
