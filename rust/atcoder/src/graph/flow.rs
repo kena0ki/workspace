@@ -36,12 +36,12 @@ impl FlowGraph {
 
     /// Adds an edge with specified directional capacities and cost per unit of
     /// flow. If only forward flow is allowed, rcap should be zero.
-    pub fn add_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
-        self.graph.add_flow_edge(u,v,cap,rcap,cost);
+    pub fn add_edge(&mut self, u: usize, v: usize, cap: i64, cost: i64) {
+        self.graph.add_flow_edge(u,v,cap,0,cost);
     }
 
-    pub fn add_edge_no_cost(&mut self, u: usize, v: usize, cap: i64, rcap: i64) {
-        self.graph.add_flow_edge(u,v,cap,rcap,0);
+    pub fn add_edge_rcap(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost:i64) {
+        self.graph.add_flow_edge(u,v,cap,rcap,cost);
     }
 
     /// Iterator of the edges not including residual edges.
@@ -161,6 +161,11 @@ impl FlowGraph {
     ///
     /// Panics if the flow or cost overflow a 64-bit signed integer.
     pub fn mcf(&mut self, s: usize, t: usize) -> (i64, i64) {
+        return self.mcf_flow_limit(s,t,i64::MAX);
+    }
+
+    /// Finds minimum cost flow with a flow limitation.
+    pub fn mcf_flow_limit(&mut self, s: usize, t: usize, mut flow_limit: i64) -> (i64, i64) {
         let mut pot = vec![0; self.graph.num_v()];
 
         // Bellman-Ford deals with negative-cost edges at initialization.
@@ -175,13 +180,18 @@ impl FlowGraph {
 
         let (mut min_cost, mut max_flow) = (0, 0);
         loop {
+            println!("flow_limit: {:?}", flow_limit);
+            if flow_limit <= 0 {
+                break;
+            }
             let par = self.mcf_search(s, &mut pot); // find shortest path from s to t.
             if par[t] == None {
                 break;
             }
-            let (dc, df) = self.mcf_augment(t, &par);
+            let (dc, df) = self.mcf_augment(t, &par,flow_limit);
             min_cost += dc;
             max_flow += df;
+            flow_limit-=df;
         }
         (min_cost, max_flow)
     }
@@ -212,12 +222,12 @@ impl FlowGraph {
     }
 
     // Pushes flow along an augmenting path of minimum cost.
-    fn mcf_augment(&mut self, t: usize, par: &[Option<usize>]) -> (i64, i64) {
+    fn mcf_augment(&mut self, t: usize, par: &[Option<usize>], flow_limit: i64) -> (i64, i64) {
         let (mut dc, mut df) = (0, Self::INF);
         let mut u = t;
         while let Some(e) = par[u] {
             let edge = &self.graph.edges[e];
-            df = df.min(edge.cap - edge.flow);
+            df = df.min(edge.cap - edge.flow).min(flow_limit);
             u = edge.u;
         }
         u = t;
@@ -245,11 +255,11 @@ mod test {
     #[test]
     fn test_dinic() {
         let mut graph = FlowGraph::new(5, 5);
-        graph.add_edge(0, 1, 3, 0, 0);
-        graph.add_edge(1, 2, 2, 0, 0);
-        graph.add_edge(1, 3, 2, 0, 0);
-        graph.add_edge(2, 4, 2, 0, 0);
-        graph.add_edge(3, 4, 2, 0, 0);
+        graph.add_edge(0, 1, 3, 0);
+        graph.add_edge(1, 2, 2, 0);
+        graph.add_edge(1, 3, 2, 0);
+        graph.add_edge(2, 4, 2, 0);
+        graph.add_edge(3, 4, 2, 0);
 
         let max = graph.dinic(0, 4);
         graph.debug_print(false);
@@ -259,8 +269,8 @@ mod test {
     #[test]
     fn test_min_cut() {
         let mut graph = FlowGraph::new(3, 2);
-        graph.add_edge(0, 1, 4, 0, 0);
-        graph.add_edge(1, 2, 3, 0, 0);
+        graph.add_edge(0, 1, 4, 0);
+        graph.add_edge(1, 2, 3, 0);
 
         let max = graph.dinic(0, 2);
         println!("max: {:?}", max);
@@ -271,10 +281,10 @@ mod test {
     #[test]
     fn test_min_cost_flow() {
         let mut graph = FlowGraph::new(4, 4);
-        graph.add_edge(0, 1, 10, 0, -10);
-        graph.add_edge(1, 2, 7, 0, 8);
-        graph.add_edge(2, 3, 7, 0, 8);
-        graph.add_edge(1, 3, 7, 0, 10);
+        graph.add_edge(0, 1, 10, -10);
+        graph.add_edge(1, 2, 7, 8);
+        graph.add_edge(2, 3, 7, 8);
+        graph.add_edge(1, 3, 7, 10);
 
         let (cost, flow) = graph.mcf(0, 3);
         assert_eq!(cost, 18);
@@ -295,21 +305,21 @@ mod test {
 
         //Initialize source / sink connections; both left & right have 6 nodes
         for lhs_vertex in left_start..left_start + 6 {
-            graph.add_edge(source, lhs_vertex, 1, 0, 0);
+            graph.add_edge(source, lhs_vertex, 1, 0);
         }
 
         for rhs_vertex in right_start..right_start + 6 {
-            graph.add_edge(rhs_vertex, sink, 1, 0, 0);
+            graph.add_edge(rhs_vertex, sink, 1, 0);
         }
 
-        graph.add_edge(left_start + 0, right_start + 1, 1, 0, 0);
-        graph.add_edge(left_start + 0, right_start + 2, 1, 0, 0);
-        graph.add_edge(left_start + 2, right_start + 0, 1, 0, 0);
-        graph.add_edge(left_start + 2, right_start + 3, 1, 0, 0);
-        graph.add_edge(left_start + 3, right_start + 2, 1, 0, 0);
-        graph.add_edge(left_start + 4, right_start + 2, 1, 0, 0);
-        graph.add_edge(left_start + 4, right_start + 3, 1, 0, 0);
-        graph.add_edge(left_start + 5, right_start + 5, 1, 0, 0);
+        graph.add_edge(left_start + 0, right_start + 1, 1, 0);
+        graph.add_edge(left_start + 0, right_start + 2, 1, 0);
+        graph.add_edge(left_start + 2, right_start + 0, 1, 0);
+        graph.add_edge(left_start + 2, right_start + 3, 1, 0);
+        graph.add_edge(left_start + 3, right_start + 2, 1, 0);
+        graph.add_edge(left_start + 4, right_start + 2, 1, 0);
+        graph.add_edge(left_start + 4, right_start + 3, 1, 0);
+        graph.add_edge(left_start + 5, right_start + 5, 1, 0);
 
         let flow_amt = graph.dinic(source, sink);
         assert_eq!(flow_amt, 5);
@@ -337,6 +347,76 @@ mod test {
         //     left_right_edges,
         //     vec![(1, 8), (3, 7), (4, 9), (5, 10), (6, 12)]
         // );
+    }
+
+    #[test]
+    // https://atcoder.jp/contests/practice2/tasks/practice2_e
+    // https://atcoder.github.io/ac-library/production/document_en/mincostflow.html
+    pub fn mcf_matching() {
+        // case 1
+        let input: &[&[i64]]= &[
+            &[5,3,2],
+            &[1,4,8],
+            &[7,6,9],
+        ];
+        let (sum, result) = fnc(3,1,input);
+        let expected = vec![
+            "X..",
+            "..X",
+            ".X.",
+        ];
+        assert_eq!(19, sum);
+        assert_eq!(expected, result);
+
+        // case 2
+        let input: &[&[i64]]= &[
+            &[10,10,1],
+            &[10,10,1],
+            &[1,1,10],
+        ];
+        let (sum, result) = fnc(3,2,input);
+        let expected = vec![
+            "XX.",
+            "XX.",
+            "..X",
+        ];
+        assert_eq!(50, sum);
+        assert_eq!(expected, result);
+
+        fn fnc(n:usize, k:usize, input: &[&[i64]]) -> (i64, Vec<String>){
+            let mut graph = FlowGraph::new(2*n+2,n*n+2*n);
+            let big=1_000_000_000;
+            let ni64 = n as i64;
+            let ki64 = k as i64;
+            let s=2*n;
+            let t=2*n+1;
+            graph.add_edge(s,t,ni64 *ki64,big);
+            for i in 0..n {
+                graph.add_edge(s,i,ki64,0);
+                graph.add_edge(n+i,t,ki64,0);
+            }
+            for i in 0..n {
+                for j in 0..n {
+                    graph.add_edge(i,n+j,1,big-input[i][j]);
+                }
+            }
+
+            let (min_cost, _max_flow) = graph.mcf_flow_limit(s,t,ni64 * ki64);
+            graph.debug_print(false);
+
+            let sum = ni64 * ki64 * big - min_cost;
+            unsafe {
+                let mut result = vec![String::from_utf8_unchecked(vec![b'.';n]);n];
+                for e in graph.edge_iter() {
+                    if e.u == s || e.v == t || e.flow == 0 {
+                        continue;
+                    }
+                    result[e.u].as_bytes_mut()[e.v-n] = b'X';
+                }
+                return (sum, result);
+            }
+        }
+
     }
 }
 

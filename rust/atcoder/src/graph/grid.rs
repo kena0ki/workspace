@@ -98,14 +98,22 @@ impl Grid<Graph<WeightedEdge>> {
 }
 
 impl Grid<FlowGraph> {
-    pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
-        self.graph.add_edge(u,v,cap,rcap,cost);
+    pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, cost: i64) {
+        self.graph.add_edge(u,v,cap,cost);
     }
-    pub fn construct_node<F>(&mut self, x: usize, y:usize, cap: i64, rcap: i64, cost: i64,
+    pub fn add_flow_edge_rcap(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
+        self.graph.add_edge_rcap(u,v,cap,rcap,cost);
+    }
+    pub fn construct_node<F>(&mut self, x: usize, y:usize, cap: i64, cost: i64,
+        delta_x: &[i64], delta_y: &[i64], should_skip: F)
+        where F: Fn(usize,usize) -> bool {
+        self.construct_node_rcap(x,y,cap,0,cost,delta_x,delta_y,should_skip);
+    }
+    pub fn construct_node_rcap<F>(&mut self, x: usize, y:usize, cap: i64, rcap: i64, cost: i64,
         delta_x: &[i64], delta_y: &[i64], should_skip: F)
         where F: Fn(usize,usize) -> bool {
         for (u,v) in self.edges_from_node(x,y,delta_x,delta_y,should_skip) {
-            self.graph.add_edge(u,v,cap,rcap,cost);
+            self.graph.add_edge_rcap(u,v,cap,rcap,cost);
         }
     }
     pub fn debug_print(&self) {
@@ -224,10 +232,10 @@ mod test {
                 }
                 let v = grid.coord_to_node(i,j);
                 if (i&1 == 0) && (j&1 == 0) {
-                    grid.add_flow_edge(source, v, 1, 0, 0);
-                    grid.construct_node(i,j, 1, 0, 0, delta_x,delta_y,should_skip);
+                    grid.add_flow_edge(source, v, 1, 0);
+                    grid.construct_node(i,j, 1, 0, delta_x,delta_y,should_skip);
                 } else {
-                    grid.add_flow_edge(v, sink, 1, 0, 0);
+                    grid.add_flow_edge(v, sink, 1, 0);
                 }
             }
         }
