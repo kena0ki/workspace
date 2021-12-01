@@ -7,8 +7,9 @@ pub mod connectivity;
 pub mod flow;
 pub mod grid;
 pub mod disjoint_set;
+pub mod topo;
 
-use std::collections::{BTreeSet, BinaryHeap, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::cmp::Reverse;
 
 #[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
@@ -102,48 +103,6 @@ impl Graph<Edge> {
     pub fn add_undirected_edge(&mut self, u: usize, v: usize) {
         self.add_undirected_adj(u,v);
         self.edges.push(Edge { u, v });
-    }
-}
-
-pub struct TopoGraph {
-    indeg_cnt: HashMap<usize, usize>,
-    graph: Graph<Edge>,
-}
-
-impl TopoGraph {
-    pub fn new(vmax:usize, emax_hint: usize) -> Self {
-        return Self {
-            indeg_cnt: HashMap::with_capacity(vmax),
-            graph: Graph::new(vmax,emax_hint),
-        }
-    }
-    pub fn add_edge(&mut self, u: usize, v: usize) {
-        self.graph.add_adj(u,v);
-        self.graph.edges.push(Edge { u, v });
-        *self.indeg_cnt.entry(v).or_default()+=1;
-    }
-
-    /// topological sort in lexicographical order
-    pub fn topological_sort(&mut self) -> Result<Vec<usize>, ()> {
-        let mut heap = (0..self.graph.num_v())
-            .filter(|i| ! self.indeg_cnt.contains_key(i))
-            .map(|i| Reverse(i))
-            .collect::<BinaryHeap<_>>();
-        let mut sorted_nodes = Vec::with_capacity(self.graph.num_v());
-        while let Some(Reverse(i)) = heap.pop() {
-            sorted_nodes.push(i);
-            for InDegree { v, .. } in self.graph.adj_list(i) {
-                *self.indeg_cnt.get_mut(&v).unwrap()-=1;
-                if self.indeg_cnt[&v] == 0 {
-                    heap.push(Reverse(v));
-                }
-            }
-        }
-        return if sorted_nodes.len() == self.graph.num_v() {
-            Ok(sorted_nodes)
-        } else {
-            Err(())
-        };
     }
 }
 
@@ -268,24 +227,5 @@ mod graph_test {
         let (dist, path) = graph.dijkstra_to(0, 8);
         assert_eq!(14, dist);
         assert_eq!([0, 1, 2, 8], &*path);
-    }
-
-    #[test]
-    fn topo_sort() {
-        let mut graph = TopoGraph::new(5,5);
-        let input = [
-            (5,4),
-            (2,1),
-            (3,4),
-            (2,4),
-            (5,3),
-        ];
-        for (u,v) in input {
-            graph.add_edge(u-1,v-1);
-        }
-
-        let sorted = graph.topological_sort().unwrap().iter().map(|i| i+1).collect::<Vec<_>>();
-        assert_eq!(&[2,1,5,3,4], &*sorted);
-
     }
 }
