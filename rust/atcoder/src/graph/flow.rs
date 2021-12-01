@@ -1,16 +1,7 @@
 //! Maximum flows, matchings, and minimum cuts.
 use std::{collections::btree_set::IntoIter, iter::StepBy};
 
-use super::{Graph, InDegree};
-
-#[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
-pub struct FlowEdge {
-    u: usize,
-    v: usize,
-    cap: i64,
-    cost: i64,
-    flow: i64,
-}
+use super::{Graph, InDegree,FlowEdge};
 
 impl Graph<FlowEdge> {
     pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
@@ -47,6 +38,10 @@ impl FlowGraph {
     /// flow. If only forward flow is allowed, rcap should be zero.
     pub fn add_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
         self.graph.add_flow_edge(u,v,cap,rcap,cost);
+    }
+
+    pub fn add_edge_no_cost(&mut self, u: usize, v: usize, cap: i64, rcap: i64) {
+        self.graph.add_flow_edge(u,v,cap,rcap,0);
     }
 
     /// Iterator of the edges not including residual edges.

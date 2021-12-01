@@ -26,6 +26,15 @@ pub struct WeightedEdge {
 }
 
 #[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
+pub struct FlowEdge {
+    u: usize,
+    v: usize,
+    cap: i64,
+    cost: i64,
+    flow: i64,
+}
+
+#[derive(Debug,Default,Copy,Clone,PartialEq,Eq)]
 pub struct InDegree {
     idx: usize,
     v: usize,

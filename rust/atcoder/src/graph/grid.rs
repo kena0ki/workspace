@@ -1,20 +1,27 @@
 use super::Graph;
 use super::Edge;
 use super::WeightedEdge;
+use super::flow::FlowGraph;
 
 #[derive(Debug,Default,Clone,PartialEq,Eq)]
 pub struct Grid<T> {
     x_size: usize,
     y_size: usize,
-    graph: Graph<T>,
+    graph: T,
 }
 
 impl <T> Grid<T> {
-    pub fn new(x_size: usize, y_size:usize, graph: Graph<T>) -> Self {
-        return Self { x_size, y_size, graph };
-    }
-    pub fn graph(&self) -> &Graph<T> {
+    pub fn graph(&self) -> &T {
         return &self.graph;
+    }
+    pub fn x_size(&self) -> usize {
+        return self.x_size;
+    }
+    pub fn y_size(&self) -> usize {
+        return self.y_size;
+    }
+    pub fn new(x_size: usize, y_size:usize, graph: T) -> Self {
+        return Self { x_size, y_size, graph };
     }
     pub fn coord_to_node(&self, x:usize, y:usize) -> usize {
         if x >= self.x_size || y >= self.y_size {
@@ -56,7 +63,7 @@ impl <T> Grid<T> {
     }
 }
 
-impl Grid<Edge> {
+impl Grid<Graph<Edge>> {
     pub fn add_edge(&mut self, u:usize,v:usize) {
         self.graph.add_edge(u,v);
     }
@@ -73,7 +80,7 @@ impl Grid<Edge> {
     }
 }
 
-impl Grid<WeightedEdge> {
+impl Grid<Graph<WeightedEdge>> {
     pub fn add_weighted_edge(&mut self, u:usize,v:usize, weight: i64) {
         self.graph.add_weighted_edge(u,v, weight);
     }
@@ -85,6 +92,24 @@ impl Grid<WeightedEdge> {
     }
     pub fn debug_print(&self) {
         for edge in &self.graph.edges {
+            println!("{:?}: {:?} -> {:?}", edge, self.node_to_coord(edge.u), self.node_to_coord(edge.v));
+        }
+    }
+}
+
+impl Grid<FlowGraph> {
+    pub fn add_flow_edge(&mut self, u: usize, v: usize, cap: i64, rcap: i64, cost: i64) {
+        self.graph.add_edge(u,v,cap,rcap,cost);
+    }
+    pub fn construct_node<F>(&mut self, x: usize, y:usize, cap: i64, rcap: i64, cost: i64,
+        delta_x: &[i64], delta_y: &[i64], should_skip: F)
+        where F: Fn(usize,usize) -> bool {
+        for (u,v) in self.edges_from_node(x,y,delta_x,delta_y,should_skip) {
+            self.graph.add_edge(u,v,cap,rcap,cost);
+        }
+    }
+    pub fn debug_print(&self) {
+        for edge in &self.graph.graph.edges {
             println!("{:?}: {:?} -> {:?}", edge, self.node_to_coord(edge.u), self.node_to_coord(edge.v));
         }
     }
@@ -171,5 +196,69 @@ mod test {
         }
         let expected_path = [(2, 2), (2, 1), (2, 0), (1, 0), (0, 0)];
         assert_eq!(expected_path, que.make_contiguous());
+    }
+
+    #[test]
+    // https://atcoder.jp/contests/practice2/tasks/practice2_d
+    fn max_flow_matching() {
+        let x_size=3;
+        let y_size=3;
+        let source=x_size*y_size;
+        let sink=x_size*y_size+1;
+        let graph = FlowGraph::new(x_size*y_size+2,x_size*y_size*4);
+        let mut grid = Grid::new(x_size,y_size, graph);
+        let input = &mut [
+            "#..".to_string(),
+            "..#".to_string(),
+            "...".to_string(),
+        ];
+        let delta_x = &[-1,1,0,0];
+        let delta_y = &[0,0,-1,1];
+        let should_skip = |x:usize,y:usize| {
+            return input[y].as_bytes()[x] == '#' as u8;
+        };
+        for i in 0..x_size {
+            for j in 0..y_size {
+                if should_skip(i,j) {
+                    continue;
+                }
+                let v = grid.coord_to_node(i,j);
+                if (i&1 == 0) && (j&1 == 0) {
+                    grid.add_flow_edge(source, v, 1, 0, 0);
+                    grid.construct_node(i,j, 1, 0, 0, delta_x,delta_y,should_skip);
+                } else {
+                    grid.add_flow_edge(v, sink, 1, 0, 0);
+                }
+            }
+        }
+
+        let max_flow = grid.graph.dinic(source, sink);
+
+        for e in grid.graph.edge_iter() {
+            if e.u == source || e.v == sink {
+                continue;
+            }
+            let (x1,y1) = grid.node_to_coord(e.u);
+            let (x2,y2) = grid.node_to_coord(e.v);
+            if y1 == y2 {
+                unsafe {
+                    input[y1.min(y2)].as_bytes_mut()[x1.min(x2)] = '>' as u8;
+                    input[y1.max(y2)].as_bytes_mut()[x1.max(x2)] = '<' as u8;
+                }
+            } else {
+                unsafe {
+                    input[y1.min(y2)].as_bytes_mut()[x1.min(x2)] = 'V' as u8;
+                    input[y1.max(y2)].as_bytes_mut()[x1.max(x2)] = '^' as u8;
+                }
+            }
+        }
+
+        assert_eq!(3, max_flow);
+        let expected = &[
+            "#><",
+            "V.#",
+            "^><",
+        ];
+        assert_eq!(expected, input);
     }
 }
