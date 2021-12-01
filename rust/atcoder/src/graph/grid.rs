@@ -208,6 +208,7 @@ mod test {
 
     #[test]
     // https://atcoder.jp/contests/practice2/tasks/practice2_d
+    // https://atcoder.github.io/ac-library/production/document_en/maxflow.html
     fn max_flow_matching() {
         let x_size=3;
         let y_size=3;
