@@ -405,7 +405,7 @@ mod test {
             graph.debug_print(false);
 
             let sum = ni64 * ki64 * big - min_cost;
-            unsafe {
+            return unsafe {
                 let mut result = vec![String::from_utf8_unchecked(vec![b'.';n]);n];
                 for e in graph.edge_iter() {
                     if e.u == s || e.v == t || e.flow == 0 {
@@ -413,8 +413,8 @@ mod test {
                     }
                     result[e.u].as_bytes_mut()[e.v-n] = b'X';
                 }
-                return (sum, result);
-            }
+                (sum, result)
+            };
         }
 
     }
