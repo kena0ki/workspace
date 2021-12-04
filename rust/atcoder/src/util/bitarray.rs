@@ -141,29 +141,42 @@ mod test {
     use super::*;
 
     #[test]
-    fn to_string() {
-        let mut barr = BitArray::new(200);
-        barr.set_bit(5);
-        println!("{}",barr.to_string());
+    fn barr_bitor() {
+        let mut left = BitArray::new(200);
+        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 0);
+        let mut right = BitArray::new(200);
+        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        let barr = left | right;
+        let expected = "00000000000011111111111111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111011";
+        assert_eq!(expected, barr.to_string());
     }
 
     #[test]
-    fn shift_left() {
+    fn barr_bitand() {
+        let mut left = BitArray::new(200);
+        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 30);
+        let mut right = BitArray::new(200);
+        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        let barr = left & right;
+        let expected = "00000000000000000000000000000000000000000011111111111111111011111111111111111111111111111011111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(expected, barr.to_string());
+    }
+
+    #[test]
+    fn barr_shift_left() {
         let mut barr = BitArray::new(200);
         barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
-        barr <<= 100;
-        println!("{}", barr.to_string());
+        barr = barr << 100;
         let expected = "11111111101111111111111111111111111111111111111111111111111111111111111111111111111111101100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
     }
 
     #[test]
-    fn shift_left2() {
+    fn barr_shift_left_assign() {
         let mut barr = BitArray::new(200);
         barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
-        barr <<= 100;
-        println!("{}", barr.to_string());
-        let expected = "11111111101111111111111111111111111111111111111111111111111111111111111111111111111111101100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+        barr <<= 50;
+        let expected = "00000000000000000000001111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
     }
 }
