@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Shl, ShlAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Shl, ShlAssign};
 
 
 #[derive(Debug,Clone)]
@@ -24,13 +24,13 @@ impl BitArray {
         return self.num_bits;
     }
 
-    /// Sets a bit to one. Index is zero-based.
+    /// Sets the specified bit to true. Index is zero-based.
     pub fn set_bit(&mut self, at: usize) {
         self.panic_if_out_of_range(at);
         self.bits[at/Self::BITS_PER_UNIT] |= 1<<(at%Self::BITS_PER_UNIT);
     }
 
-    /// Sets a bit to zero. Index is zero-based.
+    /// Sets the specified bit to false. Index is zero-based.
     pub fn clear_bit(&mut self, at: usize) {
         self.panic_if_out_of_range(at);
         self.bits[at/Self::BITS_PER_UNIT] &= 0<<(at%Self::BITS_PER_UNIT);
@@ -102,6 +102,20 @@ impl BitOrAssign for BitArray {
         }
     }
 }
+impl BitXor for BitArray {
+    type Output = Self;
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self.bitxor_assign(rhs);
+        return self;
+    }
+}
+impl BitXorAssign for BitArray {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        for i in 0..self.num_arr {
+            self.bits[i] ^= rhs.bits[i];
+        }
+    }
+}
 
 impl Shl<usize> for BitArray {
     type Output = Self;
@@ -130,7 +144,8 @@ impl ShlAssign<usize> for BitArray {
             self.bits[shift] = self.bits[0] << offset;
         }
             self.bits[0..shift].fill(0);
-            self.bits[self.num_arr-1] &= u128::MAX >> sub_offset;
+            let unused_range = Self::BITS_PER_UNIT - self.num_bits%Self::BITS_PER_UNIT;
+            self.bits[self.num_arr-1] &= !0 >> unused_range;
         }
     }
 }
@@ -163,6 +178,17 @@ mod test {
     }
 
     #[test]
+    fn barr_bitxor() {
+        let mut left = BitArray::new(200);
+        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 30);
+        let mut right = BitArray::new(200);
+        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        let barr = left ^ right;
+        let expected = "00000000000011111111111111111111111111111100000000000000000100000000000000000000000000000100000000000000000000000000000000000000000000000100111111111111111111111111111011000000000000000000000000000000";
+        assert_eq!(expected, barr.to_string());
+    }
+
+    #[test]
     fn barr_shift_left() {
         let mut barr = BitArray::new(200);
         barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
@@ -176,7 +202,7 @@ mod test {
         let mut barr = BitArray::new(200);
         barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
         barr <<= 50;
-        let expected = "00000000000000000000001111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
+        let expected = "00000000000011111111111111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
     }
 }
