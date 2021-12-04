@@ -1,3 +1,5 @@
+pub mod bitarray;
+
 use std::collections::{BTreeMap,BTreeSet};
 pub fn coord_cmp<T:Ord+Clone+Copy>(a: &mut Vec<T>) -> (Vec<usize>, usize) {
     let mut set = BTreeSet::<T>::new();
