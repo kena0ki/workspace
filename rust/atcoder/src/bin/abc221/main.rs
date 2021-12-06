@@ -111,9 +111,9 @@ mod g_set {
         }
         let x_goal=x_goal.unwrap();
         let y_goal=y_goal.unwrap();
-        let dp = _f_dp(n,darr);
-        let x=_f_path(n,&dp,darr,x_goal);
-        let y=_f_path(n,&dp,darr,y_goal);
+        let dp = _f_dp_bit(n,darr);
+        let x=_f_path_bit(n,&dp,darr,x_goal);
+        let y=_f_path_bit(n,&dp,darr,y_goal);
         if x.is_err() || y.is_err() {
             return ("No".into(), "".into());
         }
@@ -140,7 +140,7 @@ mod g_set {
         // println!("goal: {:?}", goal);
         return Ok(goal);
     }
-    fn _f_dp(n:usize, darr: &[usize]) -> Vec<HashSet<usize>>{
+    fn _f_dp_set(n:usize, darr: &[usize]) -> Vec<HashSet<usize>>{
         let mut dp=Vec::with_capacity(n+1);
         let mut set = HashSet::<usize>::new();
         set.insert(0);
@@ -156,8 +156,8 @@ mod g_set {
         // println!("{:?}", dp);
         return dp;
     }
-    fn _f_path(n:usize, dp: &Vec<HashSet<usize>>, darr: &[usize],goal:usize) -> Result<Vec<u8>,()>{
-        if dp[n].contains(&goal) {
+    fn _f_path_set(n:usize, dp: &Vec<HashSet<usize>>, darr: &[usize],goal:usize) -> Result<Vec<u8>,()>{
+        if ! dp[n].contains(&goal) {
             return Err(());
         }
         let mut curr=goal as i64;
@@ -177,8 +177,7 @@ mod g_set {
     }
     fn _f_dp_bit(n: usize, darr: &[usize]) -> Vec<BitArray>{
         let mut dp = Vec::with_capacity(n+1);
-        dp.push(BitArray::new(3600001));
-        dp[0].set_bit(0);
+        dp.push(BitArray::from_u8slice_with_size(&[1], 3600001));
         for i in 0..n {
             let next = &(&dp[i] << darr[i]) | &dp[i];
             dp.push(next);
