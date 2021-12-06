@@ -11,6 +11,7 @@ pub struct BitArray {
 impl BitArray {
     pub const BITS_PER_UNIT:usize = u128::BITS as usize;
 
+    /// Initializes a bit array.
     pub fn new(size: usize) -> Self {
         let num_arr = size/Self::BITS_PER_UNIT + 1;
         return Self{
@@ -20,23 +21,38 @@ impl BitArray {
         };
     }
 
+    /// Initializes with a u8 slice.
+    pub fn from_u8slice(bits: &[u8]) -> Self {
+        let mut new = Self::new(bits.len());
+        for i in 0..new.num_arr {
+            let start = i*Self::BITS_PER_UNIT;
+            let end = bits.len().min(start+Self::BITS_PER_UNIT);
+            for j in start..end {
+                new.bits[i] |= (bits[j] as u128) << (j-start);
+            }
+        }
+        return new;
+    }
+
+    /// Gets the length of bits.
     pub fn len(&self) -> usize {
         return self.num_bits;
     }
 
     /// Sets the specified bit to true. Index is zero-based.
-    pub fn set_bit(&mut self, at: usize) {
+    pub fn set_bit_at(&mut self, at: usize) {
         self.panic_if_out_of_range(at);
         self.bits[at/Self::BITS_PER_UNIT] |= 1<<(at%Self::BITS_PER_UNIT);
     }
 
-    /// Sets the specified bit to false. Index is zero-based.
-    pub fn clear_bit(&mut self, at: usize) {
+    /// Unsets the specified bit to false. Index is zero-based.
+    pub fn unset_bit_at(&mut self, at: usize) {
         self.panic_if_out_of_range(at);
         self.bits[at/Self::BITS_PER_UNIT] &= 0<<(at%Self::BITS_PER_UNIT);
     }
 
-    pub fn set_bits_by_num(&mut self, num: u128, offset: usize) {
+    /// Sets the bits in the range from the offset to the offset + 128 using the u128 number. Index is zero-based.
+    pub fn set_bits_with_u128(&mut self, num: u128, offset: usize) {
         self.panic_if_out_of_range(offset + Self::BITS_PER_UNIT);
         let q = offset / Self::BITS_PER_UNIT;
         let m = offset % Self::BITS_PER_UNIT;
@@ -51,7 +67,8 @@ impl BitArray {
         }
     }
 
-    pub fn test_bit(&mut self, at: usize) -> bool {
+    /// Test whether the specified bit is true.
+    pub fn test_bit(&self, at: usize) -> bool {
         self.panic_if_out_of_range(at);
         return self.bits[at/Self::BITS_PER_UNIT] & (1<<(at%Self::BITS_PER_UNIT)) > 0;
     }
@@ -62,6 +79,7 @@ impl BitArray {
         }
     }
 
+    /// Converts the bit array to a binary representative string.
     pub fn to_string(&self) -> String {
         let mut s = String::with_capacity(self.num_bits);
         let b = self.bits[self.num_arr-1];
@@ -189,6 +207,17 @@ impl ShrAssign<usize> for BitArray {
     }
 }
 
+impl <const N:usize> From<&[u8; N]> for BitArray {
+    fn from(bits: &[u8; N]) -> Self {
+        return Self::from_u8slice(bits);
+    }
+}
+impl From<&[u8]> for BitArray {
+    fn from(bits: &[u8]) -> Self {
+        return Self::from_u8slice(bits);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -196,9 +225,9 @@ mod test {
     #[test]
     fn barr_bitor() {
         let mut left = BitArray::new(200);
-        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 0);
+        left.set_bits_with_u128(!0 - (1<<2) - (1<<80), 0);
         let mut right = BitArray::new(200);
-        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        right.set_bits_with_u128(!0 - (1<<2) - (1<<80), 60);
         left |= &right;
         let expected = "00000000000011111111111111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111011";
         assert_eq!(expected, left.to_string());
@@ -207,9 +236,9 @@ mod test {
     #[test]
     fn barr_bitand() {
         let mut left = BitArray::new(200);
-        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 30);
+        left.set_bits_with_u128(!0 - (1<<2) - (1<<80), 30);
         let mut right = BitArray::new(200);
-        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        right.set_bits_with_u128(!0 - (1<<2) - (1<<80), 60);
         left &= &right;
         let expected = "00000000000000000000000000000000000000000011111111111111111011111111111111111111111111111011111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, left.to_string());
@@ -218,9 +247,9 @@ mod test {
     #[test]
     fn barr_bitxor() {
         let mut left = BitArray::new(200);
-        left.set_bits_by_num(!0 - (1<<2) - (1<<80), 30);
+        left.set_bits_with_u128(!0 - (1<<2) - (1<<80), 30);
         let mut right = BitArray::new(200);
-        right.set_bits_by_num(!0 - (1<<2) - (1<<80), 60);
+        right.set_bits_with_u128(!0 - (1<<2) - (1<<80), 60);
         left ^= &right;
         let expected = "00000000000011111111111111111111111111111100000000000000000100000000000000000000000000000100000000000000000000000000000000000000000000000100111111111111111111111111111011000000000000000000000000000000";
         assert_eq!(expected, left.to_string());
@@ -229,7 +258,7 @@ mod test {
     #[test]
     fn barr_shift_left() {
         let mut barr = BitArray::new(200);
-        barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
+        barr.set_bits_with_u128(!0 - (1<<2) - (1<<80), 10);
         barr = &barr << 100;
         let expected = "11111111101111111111111111111111111111111111111111111111111111111111111111111111111111101100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
@@ -238,7 +267,7 @@ mod test {
     #[test]
     fn barr_shift_left_assign() {
         let mut barr = BitArray::new(200);
-        barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 10);
+        barr.set_bits_with_u128(!0 - (1<<2) - (1<<80), 10);
         barr <<= 50;
         let expected = "00000000000011111111111111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
@@ -247,7 +276,7 @@ mod test {
     #[test]
     fn barr_shift_right() {
         let mut barr = BitArray::new(200);
-        barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 72);
+        barr.set_bits_with_u128(!0 - (1<<2) - (1<<80), 72);
         barr = &barr >> 100;
         let expected = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111101111111111111111111111111111111111111111111111111111";
         assert_eq!(expected, barr.to_string());
@@ -256,9 +285,17 @@ mod test {
     #[test]
     fn barr_shift_right_assign() {
         let mut barr = BitArray::new(200);
-        barr.set_bits_by_num(!0 - (1<<2) - (1<<80), 72);
+        barr.set_bits_with_u128(!0 - (1<<2) - (1<<80), 72);
         barr >>= 50;
         let expected = "00000000000000000000000000000000000000000000000000111111111111111111111111111111111111111111111110111111111111111111111111111111111111111111111111111111111111111111111111111110110000000000000000000000";
+        assert_eq!(expected, barr.to_string());
+    }
+
+    #[test]
+    fn barr_from_u8slice() {
+        let mut barr = BitArray::from(&[0;200]);
+        barr.set_bits_with_u128(!0 - (1<<2) - (1<<80), 60);
+        let expected = "00000000000011111111111111111111111111111111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111011000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(expected, barr.to_string());
     }
 }
