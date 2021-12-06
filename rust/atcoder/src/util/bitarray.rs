@@ -21,12 +21,18 @@ impl BitArray {
         };
     }
 
-    /// Initializes with a u8 slice.
+    /// Initializes from a u8 slice.
     pub fn from_u8slice(bits: &[u8]) -> Self {
-        let mut new = Self::new(bits.len());
+        return Self::from_u8slice_with_size(bits,bits.len());
+    }
+
+    /// Initializes from a u8 slice with a size.
+    pub fn from_u8slice_with_size(bits: &[u8], size: usize) -> Self {
+        Self::panic_if_out_of_input_range(size, bits.len());
+        let mut new = Self::new(size);
         for i in 0..new.num_arr {
             let start = i*Self::BITS_PER_UNIT;
-            let end = bits.len().min(start+Self::BITS_PER_UNIT);
+            let end = size.min(start+Self::BITS_PER_UNIT);
             for j in start..end {
                 new.bits[i] |= (bits[j] as u128) << (j-start);
             }
@@ -73,10 +79,14 @@ impl BitArray {
         return self.bits[at/Self::BITS_PER_UNIT] & (1<<(at%Self::BITS_PER_UNIT)) > 0;
     }
 
-    fn panic_if_out_of_range(&self, at:usize) {
-        if at > self.num_bits {
-            panic!("Index {} out of range: {}.", at, self.num_bits);
+    fn panic_if_out_of_input_range(num_bits: usize, at:usize) {
+        if at > num_bits {
+            panic!("Index {} out of range: {}.", at, num_bits);
         }
+    }
+
+    fn panic_if_out_of_range(&self, at:usize) {
+        Self::panic_if_out_of_input_range(self.num_bits, at);
     }
 
     /// Converts the bit array to a binary representative string.
