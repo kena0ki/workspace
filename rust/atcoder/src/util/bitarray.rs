@@ -32,7 +32,7 @@ impl BitArray {
         let mut new = Self::new(size);
         for i in 0..new.num_arr {
             let start = i*Self::BITS_PER_UNIT;
-            let end = size.min(start+Self::BITS_PER_UNIT);
+            let end = bits.len().min(start+Self::BITS_PER_UNIT);
             for j in start..end {
                 new.bits[i] |= (bits[j] as u128) << (j-start);
             }
