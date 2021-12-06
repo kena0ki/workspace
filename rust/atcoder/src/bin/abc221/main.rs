@@ -63,9 +63,11 @@ mod e {
     }
 }
 
+
 #[cfg(test)]
-mod g {
+mod g_set {
     use std::collections::HashSet;
+    use atcoder::util::bitarray::BitArray;
 
     #[test]
     fn test_g1() {
@@ -109,9 +111,9 @@ mod g {
         }
         let x_goal=x_goal.unwrap();
         let y_goal=y_goal.unwrap();
-        let dp = f_dp(n,darr);
-        let x=f_path(n,&dp,darr,x_goal);
-        let y=f_path(n,&dp,darr,y_goal);
+        let dp = _f_dp(n,darr);
+        let x=_f_path(n,&dp,darr,x_goal);
+        let y=_f_path(n,&dp,darr,y_goal);
         if x.is_err() || y.is_err() {
             return ("No".into(), "".into());
         }
@@ -138,7 +140,7 @@ mod g {
         // println!("goal: {:?}", goal);
         return Ok(goal);
     }
-    fn f_dp(n:usize, darr: &[usize]) -> Vec<HashSet<usize>>{
+    fn _f_dp(n:usize, darr: &[usize]) -> Vec<HashSet<usize>>{
         let mut dp=Vec::with_capacity(n+1);
         let mut set = HashSet::<usize>::new();
         set.insert(0);
@@ -154,8 +156,8 @@ mod g {
         // println!("{:?}", dp);
         return dp;
     }
-    fn f_path(n:usize, dp: &Vec<HashSet<usize>>, darr: &[usize],goal:usize) -> Result<Vec<u8>,()>{
-        if dp[n].get(&goal).is_none() {
+    fn _f_path(n:usize, dp: &Vec<HashSet<usize>>, darr: &[usize],goal:usize) -> Result<Vec<u8>,()>{
+        if dp[n].contains(&goal) {
             return Err(());
         }
         let mut curr=goal as i64;
@@ -167,6 +169,34 @@ mod g {
             let prev = curr-darr[i] as i64;
             // println!("curr: {:?}", curr);
             if prev >= 0 && dp[i].contains(&(prev as usize)) {
+                path[i] = 1;
+                curr=prev;
+            }
+        }
+        return Ok(path);
+    }
+    fn _f_dp_bit(n: usize, darr: &[usize]) -> Vec<BitArray>{
+        let mut dp = Vec::with_capacity(n+1);
+        dp.push(BitArray::new(3600001));
+        dp[0].set_bit(0);
+        for i in 0..n {
+            let next = &(&dp[i] << darr[i]) | &dp[i];
+            dp.push(next);
+        }
+        return dp;
+    }
+    fn _f_path_bit(n:usize, dp: &Vec<BitArray>, darr: &[usize],goal:usize) -> Result<Vec<u8>,()>{
+        if ! dp[n].test_bit(goal) {
+            return Err(());
+        }
+        let mut curr=goal as i64;
+        let mut path = vec![0;n];
+        for i in (0..n).rev() {
+            if curr < 0 {
+                break;
+            }
+            let prev = curr-darr[i] as i64;
+            if prev >= 0 && dp[i].test_bit(prev as usize) {
                 path[i] = 1;
                 curr=prev;
             }
