@@ -4,22 +4,22 @@ fn main() {}
 #[cfg(test)]
 mod e {
     use text_io::read;
-    use atcoder::range_query::segtree::static_arq::StaticArq;
-    use atcoder::range_query::segtree::specs::ArqSpec;
-    use atcoder::util;
-    use atcoder::math::modulo::{ModUsize,ModUsizeFactory};
+    use rustrithm::range_query::static_arq::StaticArq;
+    use rustrithm::range_query::specs::ArqSpec;
+    use rustrithm::util;
+    use rustrithm::math::modulo::ModU64;
     // const MOD: usize = 53;
-    const MOD: usize = 998244353;
+    const MOD: u64 = 998244353;
 
     struct ArqImpl;
     impl ArqSpec for ArqImpl {
-        type S = ModUsize;
-        type F = ModUsize;
+        type S = ModU64<MOD>;
+        type F = ModU64<MOD>;
         fn op(&a: &Self::S, &b: &Self::S) -> Self::S {
             return a+b;
         }
         fn identity() -> Self::S {
-            return ModUsizeFactory::new(MOD).create(0);
+            return ModU64::<MOD>::new(0);
         }
         fn compose(&f: &Self::F, _: &Self::F) -> Self::F {
             return f;
@@ -46,18 +46,18 @@ mod e {
             a[i]=read!();
         }
         let (arr,m) = util::coord_cmp(&mut a);
-        let f = ModUsizeFactory::new(MOD);
-        let v = vec![f.create(0); m];
+        let f = ModU64::<MOD>::new(0);
+        let v = vec![f; m];
         let mut seg = StaticArq::<ArqImpl>::new(&v);
-        let mut ans = f.create(0);
-        let mut m2 = f.create(2);
+        let mut ans = f;
+        let mut m2 = f.sibling(2);
         let mut m2_inv = m2.inv();
         for i in 1..n {
             seg.update(arr[i-1], arr[i-1], &m2_inv);
             let sum = seg.query(0, arr[i]) * m2;
             ans = ans + sum;
-            m2.mul_by(2);
-            m2_inv.div_by(2);
+            m2*=2;
+            m2_inv/=2;
         }
         println!("{}", ans);
     }
@@ -67,7 +67,7 @@ mod e {
 #[cfg(test)]
 mod g_set {
     use std::collections::HashSet;
-    use atcoder::util::bitarray::BitArray;
+    use rustrithm::bitarray::BitArray;
 
     #[test]
     fn test_g1() {
