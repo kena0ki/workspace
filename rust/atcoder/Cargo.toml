@@ -1,3 +1,9 @@
+bin = [
+  {name="abc221e", path="src/abc221/e.rs"},
+  {name="abc221f", path="src/abc221/f.rs"},
+  {name="abc221g", path="src/abc221/g.rs"},
+]
+
 [package]
 name = "atcoder"
 version = "0.1.0"
@@ -54,7 +60,5 @@ bitvec = "0.22.3"
 name = "bitarray"
 harness = false
 
-[[bin]]
-name = "abc221f"
-path = "src/abc221/f.rs"
+
 

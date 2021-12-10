@@ -17,21 +17,21 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
 }
 
 #[cfg(test)]
-mod test {
+mod abc999x {
     use super::*;
 
     #[test]
-    fn abc221f_1() {
+    fn test1() {
         let input: &[u8] = b"\
 foo bar
 ";
-        let expected = b"\
+        let expected = "\
 foo baz
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
         solve(scan, output);
 
-        assert_eq!(expected, &output[..]);
+        assert_eq!(expected, std::str::from_utf8(output).unwrap());
     }
 }
