@@ -1,5 +1,3 @@
-// template
-
 use std::io::{BufRead, BufWriter, Write};
 use rustrithm::scanner;
 
