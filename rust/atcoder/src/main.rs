@@ -12,8 +12,8 @@ fn main() {
 }
 
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    let a: String = scan.token();
-    writeln!(out, "{} baz", a).ok();
+    let a: usize = scan.token();
+    writeln!(out, "{} 3", a).ok();
 }
 
 #[cfg(test)]
@@ -23,10 +23,10 @@ mod abc999x {
     #[test]
     fn test1() {
         let input: &[u8] = b"\
-foo bar
+1 2
 ";
         let expected = "\
-foo baz
+1 3
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
