@@ -12,7 +12,7 @@ fn main() {
 }
 
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    let a: usize = scan.token();
+    let a = scan.token::<usize>();
     writeln!(out, "{} 3", a).ok();
 }
 
