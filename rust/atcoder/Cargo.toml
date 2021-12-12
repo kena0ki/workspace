@@ -5,6 +5,7 @@ bin = [
   {name="abc222e", path="src/abc222/e.rs"},
   {name="edpc_e", path="src/edpc/e.rs"},
   {name="edpc_f", path="src/edpc/f.rs"},
+  {name="edpc_i", path="src/edpc/i.rs"},
 ]
 
 [package]
@@ -62,6 +63,4 @@ bitvec = "0.22.3"
 [[bench]]
 name = "bitarray"
 harness = false
-
-
 

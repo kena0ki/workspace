@@ -1,6 +1,6 @@
 // template
 
-use std::{io::{BufRead, BufWriter, Write}, collections::VecDeque};
+use std::io::{BufRead, BufWriter, Write};
 use rustrithm::scanner;
 
 fn main() {
@@ -12,56 +12,40 @@ fn main() {
 }
 
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    let a = scan.token::<String>();
-    let b = scan.token::<String>();
-    let a = a.as_bytes();
-    let b = b.as_bytes();
-    let n = a.len();
-    let m = b.len();
-    let mut dp = vec![vec![0;m+1];n+1];
-    for i in 0..n {
-        for j in 0..m {
-            if a[i] == b[j] {
-                println!("ai: {}, i: {}, j: {}", a[i], i, j);
-                dp[i+1][j+1] = dp[i][j]+1;
+    let n = scan.token::<usize>();
+    let mut dp = vec![vec![0f64; n+1]; n+1];
+    dp[0][0]=1f64;
+    for i in 1..=n {
+        let p = scan.token::<f64>();
+        for j in 0..=n {
+            if j>0 {
+                dp[i][j] = dp[i-1][j-1]*p + dp[i-1][j]*(1f64 - p);
             } else {
-                dp[i+1][j+1] = dp[i][j+1].max(dp[i+1][j]);
+                dp[i][j] = dp[i-1][j]*(1f64 - p);
             }
         }
     }
     println!("{:?}", dp);
-    let mut i=n;
-    let mut j=m;
-    let mut que = VecDeque::with_capacity(dp[n][m]);
-    while i > 0 && j > 0 {
-        if a[i-1] == b[j-1] {
-            println!("{}", a[i-1] as char);
-            println!("{}", b[j-1] as char);
-            que.push_front(a[i-1]);
-            i-=1;
-            j-=1;
-        } else if dp[i-1][j] == dp[i][j] {
-            i-=1;
-        } else {
-            j-=1;
-        }
+    let mut ans=0f64;
+    let s = n/2 + 1;
+    for j in s..=n {
+        ans+=dp[n][j];
     }
-    writeln!(out, "{}", std::str::from_utf8(que.make_contiguous()).unwrap()).ok();
+    writeln!(out, "{}", ans).ok();
 }
 
-
 #[cfg(test)]
-mod edpc_e {
+mod edpc_i {
     use super::*;
 
     #[test]
     fn test1() {
         let input: &[u8] = b"\
-axyb
-abyxb
+3
+0.30 0.60 0.80
 ";
         let expected = "\
-axb
+0.612
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
@@ -73,11 +57,11 @@ axb
     #[test]
     fn test2() {
         let input: &[u8] = b"\
-aa
-xayaz
+1
+0.50
 ";
         let expected = "\
-aa
+0.5
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
@@ -89,10 +73,11 @@ aa
     #[test]
     fn test3() {
         let input: &[u8] = b"\
-a
-z
-        ";
-        let expected = "
+5
+0.42 0.01 0.42 0.99 0.42
+";
+        let expected = "\
+0.3821815872
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
