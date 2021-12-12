@@ -6,6 +6,7 @@ bin = [
   {name="edpc_e", path="src/edpc/e.rs"},
   {name="edpc_f", path="src/edpc/f.rs"},
   {name="edpc_i", path="src/edpc/i.rs"},
+  {name="edpc_j", path="src/edpc/j.rs"},
 ]
 
 [package]
