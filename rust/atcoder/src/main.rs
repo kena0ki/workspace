@@ -16,6 +16,15 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     writeln!(out, "{} 3", a).ok();
 }
 
+#[allow(unused)]
+#[macro_export]
+macro_rules! logln {
+    ($($arg:tt)*) => ({
+        #[cfg(debug_assertions)]
+        println!($($arg)*);
+    })
+}
+
 #[cfg(test)]
 mod abc999x {
     use super::*;
