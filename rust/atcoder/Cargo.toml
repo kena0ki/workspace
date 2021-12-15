@@ -1,8 +1,4 @@
 bin = [
-  {name="abc221e", path="src/abc221/e.rs"},
-  {name="abc221f", path="src/abc221/f.rs"},
-  {name="abc221g", path="src/abc221/g.rs"},
-  {name="abc222e", path="src/abc222/e.rs"},
   {name="edpc_e", path="src/edpc/e.rs"},
   {name="edpc_f", path="src/edpc/f.rs"},
   {name="edpc_i", path="src/edpc/i.rs"},
@@ -10,6 +6,12 @@ bin = [
   {name="edpc_k", path="src/edpc/k.rs"},
   {name="edpc_l", path="src/edpc/l.rs"},
   {name="edpc_m", path="src/edpc/m.rs"},
+  {name="abc221e", path="src/abc221/e.rs"},
+  {name="abc221f", path="src/abc221/f.rs"},
+  {name="abc221g", path="src/abc221/g.rs"},
+  {name="abc222e", path="src/abc222/e.rs"},
+  {name="abc222f", path="src/abc222/f.rs"},
+  {name="abc223d", path="src/abc223/d.rs"},
 ]
 
 [package]
