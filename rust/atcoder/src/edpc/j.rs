@@ -11,9 +11,43 @@ fn main() {
     solve(scan, out);
 }
 
+fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+    let n = scan.token::<usize>();
+    let mut a = Vec::with_capacity(n);
+    let mut c = vec![0;4];
+    for _ in 0..n {
+        let ai = scan.token::<usize>();
+        c[ai]+=1;
+        a.push(ai);
+    }
+    let mut dp = vec![vec![vec![None;n+1];n+1];n+1];
+    dp[0][0][0] = Some(0f64);
+    f(&mut dp, n, c[1],c[2],c[3]);
+    fn f(dp: &mut Vec<Vec<Vec<Option<f64>>>>, n: usize, c1: usize, c2: usize, c3:usize) -> f64{
+        println!("n {}", n);
+        println!("c {},{},{}", c1,c2,c3);
+        if dp[c1][c2][c3].is_some() {
+            return dp[c1][c2][c3].unwrap();
+        }
+        let sum = (c1+c2+c3) as f64;
+        let mut exp = 1f64;
+        if c1 > 0 { exp += f(dp,n,c1-1,c2,c3) * (c1 as f64/n as f64)};
+        if c2 > 0 { exp += f(dp,n,c1+1,c2-1,c3) * (c2 as f64/n as f64)};
+        if c3 > 0 { exp += f(dp,n,c1,c2+1,c3-1) * (c3 as f64/n as f64)};
+        println!("c1 {}", c1);
+        println!("exp {}", exp);
+        exp *= n as f64 /sum;
+        println!("exp2 {}", exp);
+        dp[c1][c2][c3] = Some(exp);
+        return exp;
+    }
+    println!("{:?}", dp);
+    writeln!(out, "{}", dp[c[1]][c[2]][c[3]].unwrap()).ok();
+
+}
 // https://blog.hamayanhamayan.com/entry/2019/01/09/001607
 // maybe this is incorrect
-fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+fn _solve_maybe_wrong(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut a = Vec::with_capacity(n);
     let mut c = vec![0;4];
