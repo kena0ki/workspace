@@ -1,5 +1,6 @@
-use text_io::read;
 use std::collections::{HashMap,BTreeSet,VecDeque};
+
+use rustrithm::scanner::Scanner;
 
 //
 // https://en.wikipedia.org/wiki/Breadth-first_search
@@ -23,12 +24,14 @@ use std::collections::{HashMap,BTreeSet,VecDeque};
 // expected:
 // 1 2 3 4 5 6
 fn main() {
-    let num_vert: usize = read!();
-    let num_edges: usize = read!();
+    let sin = std::io::stdin();
+    let mut scan = Scanner::new(sin.lock());
+    let num_vert: usize = scan.token();
+    let num_edges: usize = scan.token();
     let mut adj:HashMap<usize,BTreeSet<usize>> = HashMap::with_capacity(num_edges);
     for _ in 0..num_edges {
-        let u: usize = read!();
-        let v: usize = read!();
+        let u: usize = scan.token();
+        let v: usize = scan.token();
         adj.entry(u).or_default().insert(v);
     }
     let mut visited = 0;

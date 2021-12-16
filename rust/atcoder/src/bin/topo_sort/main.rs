@@ -1,5 +1,6 @@
-use text_io::read;
 use std::collections::{HashMap,BTreeSet,BinaryHeap};
+
+use rustrithm::scanner::Scanner;
 
 // https://atcoder.jp/contests/abc223/tasks/abc223_d
 // topological sort
@@ -14,13 +15,15 @@ use std::collections::{HashMap,BTreeSet,BinaryHeap};
 // expected:
 // 2 1 5 3 4
 fn main() {
-    let num_vert: usize = read!();
-    let num_edges: usize = read!();
+    let sin = std::io::stdin();
+    let mut scan = Scanner::new(sin.lock());
+    let num_vert: usize = scan.token();
+    let num_edges: usize = scan.token();
     let mut adj:HashMap<usize,BTreeSet<usize>> = HashMap::with_capacity(num_edges);
     let mut in_degree:HashMap<usize,usize> = HashMap::new();
     for _ in 0..num_edges {
-        let u: usize = read!();
-        let v: usize = read!();
+        let u: usize = scan.token();
+        let v: usize = scan.token();
         adj.entry(u).or_default().insert(v);
         *in_degree.entry(v).or_default() += 1;
     }

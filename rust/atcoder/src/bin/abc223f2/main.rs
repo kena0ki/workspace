@@ -1,4 +1,4 @@
-use text_io::read;
+use rustrithm::scanner::Scanner;
 use seg_tree::static_arq::StaticArq;
 use seg_tree::specs::ArqSpec;
 
@@ -41,9 +41,11 @@ impl ArqSpec for ArqImpl {
 // No
 // No
 fn main(){
-    let _n:usize = read!();
-    let q:usize = read!();
-    let st:String = read!();
+    let sin = std::io::stdin();
+    let mut scan = Scanner::new(sin.lock());
+    let _n:usize = scan.token();
+    let q:usize = scan.token();
+    let st:String = scan.token();
     let mut v = Vec::<i64>::with_capacity(st.len());
     let mut sum: i64=0;
     for c in st.chars() {
@@ -55,9 +57,9 @@ fn main(){
     println!("q: {:?}", seg.query(0,2));
     let mut chrs = st.chars().collect::<Vec<_>>();
     for _ in 0..q {
-        let o:usize = read!();
-        let l:usize = read!();
-        let r:usize = read!();
+        let o:usize = scan.token();
+        let l:usize = scan.token();
+        let r:usize = scan.token();
         let l =l-1;
         let r =r-1;
         if o == 1 {
