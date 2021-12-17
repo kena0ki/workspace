@@ -9,6 +9,7 @@ bin = [
   {name="edpc_n", path="src/edpc/n.rs"},
   {name="edpc_o", path="src/edpc/o.rs"},
   {name="edpc_p", path="src/edpc/p.rs"},
+  {name="edpc_q", path="src/edpc/q.rs"},
   {name="abc221e", path="src/abc221/e.rs"},
   {name="abc221f", path="src/abc221/f.rs"},
   {name="abc221g", path="src/abc221/g.rs"},
