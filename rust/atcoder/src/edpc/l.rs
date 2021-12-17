@@ -11,10 +11,28 @@ fn main() {
     solve(scan, out);
 }
 
+//
 // The order that elements are visited
-// 4, -, -
-// 5, 2, -
-// 6, 3, 1
+//    r
+//    ^
+//    |
+//   5|15 10  6  3  1
+//   4|14  9  5  2  -
+//   3|13  8  4  -  -
+//   2|12  7  -  -  -
+//   1|11  -  -  -  -
+//    + -------------------> l
+//      1  2  3  4  5
+//
+//     function call image     visited order
+// ai  a1  a2  a3  a4  a5    a1  a2  a3  a4  a5
+//     |   |   |   |   |    10   6   3   2   1
+//       v   v   v   v        11   7   4   1
+//         v   v   v            12   8   5
+//           v   v                13   9
+//             v                    14
+//            root
+//
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut a = Vec::with_capacity(n);
