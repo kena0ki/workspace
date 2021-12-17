@@ -25,7 +25,7 @@ fn main() {
 //      1  2  3  4  5
 //
 //     function call image     visited order
-// ai  a1  a2  a3  a4  a5    a1  a2  a3  a4  a5
+// ai: a1  a2  a3  a4  a5    a1  a2  a3  a4  a5
 //     |   |   |   |   |    10   6   3   2   1
 //       v   v   v   v        11   7   4   1
 //         v   v   v            12   8   5
