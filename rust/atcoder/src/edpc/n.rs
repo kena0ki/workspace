@@ -11,6 +11,35 @@ fn main() {
     solve(scan, out);
 }
 
+//
+// ai: a1 a2 a3 a4  a1 a2 a3 a4
+//             |         |
+//          |               |
+//       |            |
+//
+// ai: a1 a2 a3 a4  a1 a2 a3 a4
+//             1         3
+//          2               4
+//       5
+//
+// ai: a1 a2 a3 a4
+//       |     |
+//          |
+//
+// ai: a1 a2 a3 a4
+//       6     7
+//          8
+//
+// ai: a1 a2 a3 a4  a1 a2 a3 a4
+//       |               |
+//          |         |
+//             |            |
+//
+// ai: a1 a2 a3 a4  a1 a2 a3 a4
+//       9              11
+//         10        12
+//                         13
+//
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut a = vec![0;n];

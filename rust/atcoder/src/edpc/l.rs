@@ -26,11 +26,11 @@ fn main() {
 //
 //     function call image     visited order
 // ai: a1  a2  a3  a4  a5    a1  a2  a3  a4  a5
-//     |   |   |   |   |    10   6   3   2   1
-//       v   v   v   v        11   7   4   1
-//         v   v   v            12   8   5
-//           v   v                13   9
-//             v                    14
+//     |   |   |   |   |    11   7   4   2   1
+//       v   v   v   v        12   8   5   3
+//         v   v   v            13   9   6
+//           v   v                14  10
+//             v                    15
 //            root
 //
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
