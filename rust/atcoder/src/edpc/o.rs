@@ -1,7 +1,7 @@
 // template
 
 use std::io::{BufRead, BufWriter, Write};
-use rustrithm::scanner;
+use rustrithm::{scanner, math::modulo::ModU64};
 
 fn main() {
     let sin = std::io::stdin();
@@ -11,6 +11,16 @@ fn main() {
     solve(scan, out);
 }
 
+//       |i    0    0    0 |i    1    1    1 |i    2    2    2 |
+//       |j    0    1    2 |j    0    1    2 |j    0    1    2 |
+// 0 0 0 |1                |1                |1                |
+// 0 0 1 |  -> 1           |  -> 2           |  -> 3           |
+// 0 1 0 |       -> 1      |       -> 2      |       -> 3      |
+// 0 1 1 |                 |  -> 1 -> 3      |  -> 5 -> 8      |
+// 1 0 0 |            -> 1 |            -> 2 |            -> 3 |
+// 1 0 1 |                 |  -> 1      -> 3 |  -> 5      -> 8 |
+// 1 1 0 |                 |       -> 1 -> 3 |       -> 5 -> 8 |
+// 1 1 1 |                 |       -> 1 -> 4 |       -> 9 ->17 |
 const MOD:u64 = 10000007;
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
@@ -19,18 +29,19 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
         let aij = scan.token::<usize>();
         a[i][j]=aij;
     }}
-    let mut dp = vec![vec![0u64;1<<n];n];
-    dp[0][0]=1;
-    for i in 0..n {
-        for bit in 0..1<<n {
-            for j in 0..n {
-                if bit >> j & 1 == 1 && a[i-1][j] == 1 {
-                    dp[i][bit] = dp[i][bit] + dp[i-1][bit ^ 1<<j];
-                }
-            }
+    let mut dp = vec![vec![ModU64::<MOD>::new(0);1<<n];n+1];
+    dp[0][0]=ModU64::<MOD>::new(1);
+    for i in 0..n { for msk in 0..1<<n { for j in 0..n {
+        if a[i][j] == 1 && msk >> j & 1 == 1 {
+            let msk_unsetj = msk ^ 1<<j; //unset j'th bit
+            dp[i+1][msk] = dp[i][msk] + dp[i][msk_unsetj];
+            logln!("msk {}",msk);
+        } else {
+            dp[i+1][msk] = dp[i][msk];
         }
-    }
-    writeln!(out, "{}", dp[n-1][1<<n-1]).ok();
+    }}}
+    logln!("{:?}", dp);
+    writeln!(out, "{}", dp[n][(1<<n)-1]).ok();
 }
 
 #[allow(unused)]
