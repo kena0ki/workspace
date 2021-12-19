@@ -1,7 +1,7 @@
 // template
 
 use std::io::{BufRead, BufWriter, Write};
-use rustrithm::{scanner, math::modulo::ModU64};
+use rustrithm::scanner;
 
 fn main() {
     let sin = std::io::stdin();
@@ -11,17 +11,28 @@ fn main() {
     solve(scan, out);
 }
 
-//       |i    0    0    0 |i    1    1    1 |i    2    2    2 |
-//       |j    0    1    2 |j    0    1    2 |j    0    1    2 |
-// 0 0 0 |1                |1                |1                |
-// 0 0 1 |  -> 1           |  -> 2           |  -> 3           |
-// 0 1 0 |       -> 1      |       -> 2      |       -> 3      |
-// 0 1 1 |                 |  -> 1 -> 3      |  -> 5 -> 8      |
-// 1 0 0 |            -> 1 |            -> 2 |            -> 3 |
-// 1 0 1 |                 |  -> 1      -> 3 |  -> 5      -> 8 |
-// 1 1 0 |                 |       -> 1 -> 3 |       -> 5 -> 8 |
-// 1 1 1 |                 |       -> 1 -> 4 |       -> 9 ->17 |
-const MOD:u64 = 10000007;
+//          1-indexed
+// |       |i    1    1    1 |i    2    2    2 |i    3    3    3 |  |
+// |       |j    1    2    3 |j    1    2    3 |j    1    2    3 |  |n!
+// | 0 0 0 |1 -> 0           |0                |0                |  |
+// | 0 0 1 |0 -> 1           |0                |0                |  |1
+// | 0 1 0 |0      -> 1      |0                |0                |  |
+// | 0 1 1 |0                |0 -> 1 -> 2      |0                |  |2
+// | 1 0 0 |0           -> 1 |0                |0                |  |
+// | 1 0 1 |0                |0 -> 1      -> 2 |0                |  |
+// | 1 1 0 |0                |0      -> 1 -> 2 |0                |  |
+// | 1 1 1 |0                |0                |0           -> 6 |  |6
+//
+// | 0 0 0 |  <=>  |  -   -   -|
+// | 0 0 1 |       |  -   - a11|
+// | 0 1 0 |       |  - a12   -|
+// | 0 1 1 |       |  - a22 a21|
+// | 1 0 0 |       |a13   -   -|
+// | 1 0 1 |       |a23   - a21|
+// | 1 1 0 |       |a23 a22   -|
+// | 1 1 1 |       |a33 a32 a31|
+//
+const MOD:u64 = 1000000007;
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut a = vec![vec![0usize; n];n];
@@ -29,19 +40,47 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
         let aij = scan.token::<usize>();
         a[i][j]=aij;
     }}
-    let mut dp = vec![vec![ModU64::<MOD>::new(0);1<<n];n+1];
-    dp[0][0]=ModU64::<MOD>::new(1);
-    for i in 0..n { for msk in 0..1<<n { for j in 0..n {
-        if a[i][j] == 1 && msk >> j & 1 == 1 {
-            let msk_unsetj = msk ^ 1<<j; //unset j'th bit
-            dp[i+1][msk] = dp[i][msk] + dp[i][msk_unsetj];
-            logln!("msk {}",msk);
-        } else {
-            dp[i+1][msk] = dp[i][msk];
+    let mut dp = vec![vec![0;1<<n];n+1];
+    dp[0][0]=1;
+    // // not optimized
+    // for i in 0..n { for msk in 0..1<<n { for j in 0..n {
+    //     if a[i][j] == 1 && msk >> j & 1 == 1 {
+    //         let msk_unsetj = msk ^ 1<<j; //unset j'th bit
+    //         dp[i+1][msk] = (dp[i+1][msk] + dp[i][msk_unsetj]) % MOD;
+    //         //logln!("msk {}",msk);
+    //     }
+    // }}}
+
+    // // optimized
+    // let mut dp = vec![vec![0;1<<n];n+1];
+    // dp[0][0]=1;
+    // for i in 0..n { for msk in 0..1<<n {
+    //         if dp[i][msk] == 0 {
+    //             continue;
+    //         }
+    //         for j in 0..n {
+    //             if a[i][j] == 1 && ((msk >> j) & 1) == 0 {
+    //                 dp[i+1][msk ^ 1<<j] = (dp[i+1][msk ^ 1<<j] + dp[i][msk]) % MOD;
+    //             }
+    //         }
+    //     }
+    // }
+
+    // more optimized
+    let mut dp = vec![0;1<<n];
+    dp[0]=1;
+    for msk in 1usize..1<<n {
+        let i = msk.count_ones() - 1;
+        let i = i as usize;
+        for j in 0..n {
+            if a[i][j] == 1 && (msk >> j & 1) == 1 {
+                let msk_unsetj = msk ^ 1<<j;
+                dp[msk] = (dp[msk] + dp[msk_unsetj]) % MOD;
+            }
         }
-    }}}
-    logln!("{:?}", dp);
-    writeln!(out, "{}", dp[n][(1<<n)-1]).ok();
+    }
+    // logln!("{:?}", dp);
+    writeln!(out, "{}", dp[(1<<n)-1]).ok();
 }
 
 #[allow(unused)]
@@ -54,7 +93,7 @@ macro_rules! logln {
 }
 
 #[cfg(test)]
-mod abc999x {
+mod edpc_o {
     use super::*;
 
     #[test]
