@@ -41,10 +41,10 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     if ans.len() < n {
         writeln!(out, "-1").ok();
     } else {
-        for a in &ans[..n-2] {
-            write!(out, "{} ", a).ok();
+        for a in &ans[..n-1] {
+            write!(out, "{} ", a+1).ok();
         }
-        writeln!(out, "{}", ans[n-1]).ok();
+        writeln!(out, "{}", ans[n-1]+1).ok();
 
     }
 
