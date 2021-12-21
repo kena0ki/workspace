@@ -20,6 +20,8 @@ bin = [
   {name="abc223d", path="src/abc223/d.rs"},
   {name="abc223e", path="src/abc223/e.rs"},
   {name="abc223f", path="src/abc223/f.rs"},
+  {name="abc224c", path="src/abc224/c.rs"},
+  {name="abc224d", path="src/abc224/d.rs"},
 ]
 
 [package]
