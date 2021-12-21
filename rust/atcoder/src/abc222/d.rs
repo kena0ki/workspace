@@ -11,6 +11,7 @@ fn main() {
     solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc222/tasks/abc222_d
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut a = vec![0usize;n];

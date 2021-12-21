@@ -12,6 +12,7 @@ fn main() {
     s.solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc222/tasks/abc222_f
 #[derive(Default)]
 struct Solver {
     graph: Graph::<WeightedEdge>,

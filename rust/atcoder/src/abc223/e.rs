@@ -11,6 +11,7 @@ fn main() {
     solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc223/tasks/abc223_e
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let x = scan.token::<u64>();
     let y = scan.token::<u64>();

@@ -13,6 +13,8 @@ fn main() {
     solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc221/tasks/abc221_g
+//
 //    (x,y)  -> (x+y,x-y) -> ((x+y,x-y)+1)/2
 // --------------------------------------------
 // R: (1,0)  -> (1,1)     -> (1,1)

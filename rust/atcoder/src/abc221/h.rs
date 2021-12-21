@@ -11,6 +11,8 @@ fn main() {
     solve(scan, out);
 }
 //
+// https://atcoder.jp/contests/abc221/tasks/abc221_h
+//
 // Key word: Integer partitions
 //
 // P(n,k) = P(n-1,k-1) + P(n,k-1)

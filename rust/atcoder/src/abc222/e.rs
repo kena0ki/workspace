@@ -11,6 +11,7 @@ fn main() {
     solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc222/tasks/abc222_e
 const MOD:u64 = 998244353;
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();

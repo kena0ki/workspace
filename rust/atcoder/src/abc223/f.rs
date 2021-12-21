@@ -31,6 +31,7 @@ impl ArqSpec for ArqImpl {
     }
 }
 
+// https://atcoder.jp/contests/abc223/tasks/abc223_f
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let q = scan.token::<usize>();

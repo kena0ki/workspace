@@ -11,6 +11,7 @@ fn main() {
     solve(scan, out);
 }
 
+// https://atcoder.jp/contests/abc222/tasks/abc222_a
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let a = scan.token::<usize>();
     writeln!(out, "{} 3", a).ok();
