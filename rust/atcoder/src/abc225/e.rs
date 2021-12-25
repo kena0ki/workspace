@@ -1,7 +1,7 @@
 // template
 
-use std::{io::{BufRead, BufWriter, Write}, collections::{BinaryHeap, HashMap}};
-use rustrithm::scanner;
+use std::io::{BufRead, BufWriter, Write};
+use rustrithm::{scanner, math::num::Rational};
 
 fn main() {
     let sin = std::io::stdin();
@@ -13,31 +13,26 @@ fn main() {
 
 // https://atcoder.jp/contests/abc225/tasks/abc225_f
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    const MAX:usize = 1000000001;
     let n = scan.token::<usize>();
-    let mut adj = HashMap::<usize, Vec<usize>>::with_capacity(n);
-    let mut dist = BinaryHeap::<(usize,usize)>::new();
+    let mut pairs = Vec::<(Rational, Rational)>::with_capacity(n);
     for _ in 0..n {
-        let x = scan.token::<usize>();
-        let y = scan.token::<usize>();
-        let u = y*MAX + x;
-        let a = adj.entry(u).or_default();
-        a.push(u-1);
-        a.push(u-MAX);
-        dist.push((x*x + y*y,u));
+        let x = scan.token::<i64>();
+        let y = scan.token::<i64>();
+        let h = Rational::new(y,x-1);
+        let l = Rational::new(y-1,x);
+        pairs.push((l,h));
     }
-    let mut del=0;
-    while let Some((_,u)) = dist.pop() {
-        if let Some(a) = adj.get(&u).cloned() {
-            for v in a {
-                if adj.get(&v).is_some() {
-                    adj.remove(&v);
-                    del+=1;
-                }
-            }
-        };
+    logln!("{:?}", pairs);
+    pairs.sort_unstable();
+    let mut bar = Rational::from(0);
+    let mut ans = 0;
+    for &(l,h) in &pairs {
+        if l >= bar {
+            ans+=1;
+            bar = h;
+        }
     }
-    writeln!(out, "{}", n-del).ok();
+    writeln!(out, "{}",ans).ok();
 }
 
 #[allow(unused)]
