@@ -1,7 +1,7 @@
 // template
 
-use std::io::{BufRead, BufWriter, Write};
-use rustrithm::scanner;
+use std::{io::{BufRead, BufWriter, Write}, collections::HashSet};
+use rustrithm::{scanner, math::num::fast_gcd};
 
 fn main() {
     let sin = std::io::stdin();
@@ -13,32 +13,23 @@ fn main() {
 
 // https://atcoder.jp/contests/abc222/tasks/abc222_a
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    const MXE:usize = 100_000;
     let n = scan.token::<usize>();
-    let mut t = vec![0;n];
-    let mut adj = vec![Vec::<usize>::with_capacity(MXE);n];
-    for i in 0..n {
-        t[i] = scan.token::<usize>();
-        let k = scan.token::<usize>();
-        for _ in 0..k{
-            let v = scan.token::<usize>()-1;
-            adj[i].push(v);
-        }
+    let mut p = Vec::<(i64, i64)>::with_capacity(n);
+    for _ in 0..n {
+        let x = scan.token::<i64>();
+        let y = scan.token::<i64>();
+        p.push((x,y));
     }
-
-    let mut vis = vec![false;n];
-    let ans = dfs(&adj,n-1,&t, &mut vis);
-    fn dfs(adj: &Vec<Vec<usize>>, u:usize, t:&Vec<usize>, vis: &mut Vec<bool>) -> usize{
-        let mut total = t[u];
-        vis[u]=true;
-        for &v in &adj[u] {
-            if vis[v] == false {
-                total += dfs(adj,v,t,vis);
-            }
-        }
-        return total;
-    }
-    writeln!(out, "{}", ans).ok();
+    let mut a = HashSet::<(i64,i64)>::with_capacity(n*n);
+    for i in 1..n { for j in 0..i {
+        let (xd, yd) = (p[i].0 - p[j].0, p[i].1-p[j].1);
+        let g = fast_gcd(xd,yd);
+        a.insert((xd/g,yd/g));
+        let (xd, yd) = (p[j].0 - p[i].0, p[j].1-p[i].1);
+        let g = fast_gcd(xd,yd);
+        a.insert((xd/g,yd/g));
+    }}
+    writeln!(out, "{}", a.len()).ok();
 }
 
 #[allow(unused)]
@@ -51,20 +42,21 @@ macro_rules! logln {
 }
 
 #[cfg(test)]
-mod abc226c {
+mod abc226d {
     use super::*;
 
     #[test]
     fn test1() {
         let input: &[u8] = b"\
 3
-3 0
-5 1 1
-7 1 1
+1 2
+3 6
+7 4
 ";
         let expected = "\
-10
+5
 ";
+        println!("{}",(1.5 + 0.5) as i32);
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
         solve(scan, output);
@@ -75,15 +67,32 @@ mod abc226c {
     #[test]
     fn test2() {
         let input: &[u8] = b"\
-5
-1000000000 0
-1000000000 0
-1000000000 0
-1000000000 0
-1000000000 4 1 2 3 4
+3
+1 2
+2 2
+4 2
 ";
         let expected = "\
-5000000000
+2
+";
+        let output = &mut Vec::new();
+        let scan = &mut scanner::Scanner::new(input);
+        solve(scan, output);
+
+        assert_eq!(expected, std::str::from_utf8(output).unwrap());
+    }
+
+    #[test]
+    fn test3() {
+        let input: &[u8] = b"\
+4
+0 0
+0 1000000000
+1000000000 0
+1000000000 1000000000
+";
+        let expected = "\
+8
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
