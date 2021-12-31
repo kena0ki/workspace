@@ -22,23 +22,27 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let y2 = scan.token::<usize>();
     const MOD:u64 = 998244353;
     let zero = ModU64::<MOD>::new(0);
-    let mut dp = vec![vec![vec![zero;2];2];k+1];
-    dp[0][(x1==x2) as usize][(y1==y2) as usize] = zero+1;
-    for ki in 1..k+1 {
+    let mut dp = vec![vec![zero;2];2];
+    dp[(x1==x2) as usize][(y1==y2) as usize] = zero+1;
+    for _ in 0..k {
+        let mut p = vec![vec![zero;2];2];
+        std::mem::swap(&mut p,&mut dp);
+        logln!("{:?}", dp);
+        logln!("{:?}", p);
         for i in 0..2 {
-            dp[ki][i][0] = dp[ki][i][0] + dp[ki-1][i][0]*(h-2) as u64;
-            dp[ki][i][0] = dp[ki][i][0] + dp[ki-1][i][1]*(h-1) as u64;
-            dp[ki][i][1] = dp[ki][i][1] + dp[ki-1][i][0]*1;
-            //dp[ki][i][1] += dp[ki-1][i][1]*0;
+            dp[i][0] += p[i][0]*(h-2) as u64;
+            dp[i][0] += p[i][1]*(h-1) as u64;
+            dp[i][1] += p[i][0]*1;
+            //dp[i][0] += p[i][0]*0;
         }
         for j in 0..2 {
-            dp[ki][0][j] = dp[ki][0][j] + dp[ki-1][0][j]*(w-2) as u64;
-            dp[ki][0][j] = dp[ki][0][j] + dp[ki-1][1][j]*(w-1) as u64;
-            dp[ki][1][j] = dp[ki][1][j] + dp[ki-1][0][j]*1;
-            //dp[ki][1][j] += dp[ki-1][1][j]*0;
+            dp[0][j] += p[0][j]*(w-2) as u64;
+            dp[0][j] += p[1][j]*(w-1) as u64;
+            dp[1][j] += p[0][j]*1;
+            //dp[0][j] += p[0][j]*0;
         }
     }
-    writeln!(out, "{}", dp[k][1][1]).ok();
+    writeln!(out, "{}", dp[1][1]).ok();
 }
 
 #[allow(unused)]
