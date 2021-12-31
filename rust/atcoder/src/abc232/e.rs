@@ -1,7 +1,7 @@
 // template
 
 use std::io::{BufRead, BufWriter, Write};
-use rustrithm::scanner;
+use rustrithm::{scanner, math::modulo::ModU64};
 
 fn main() {
     let sin = std::io::stdin();
@@ -11,37 +11,34 @@ fn main() {
     solve(scan, out);
 }
 
-// https://atcoder.jp/contests/abc232/tasks/abc232_d
+// https://atcoder.jp/contests/abc232/tasks/abc232_e
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let h = scan.token::<usize>();
     let w = scan.token::<usize>();
-    let mut c = vec![vec![true;w];h];
-    for i in 0..h {
-        let s = scan.token::<String>();
-        let s = s.chars().collect::<Vec<_>>();
-        for j in 0..w {
-            c[i][j] = s[j] == '.';
+    let k = scan.token::<usize>();
+    let x1 = scan.token::<usize>();
+    let y1 = scan.token::<usize>();
+    let x2 = scan.token::<usize>();
+    let y2 = scan.token::<usize>();
+    const MOD:u64 = 998244353;
+    let zero = ModU64::<MOD>::new(0);
+    let mut dp = vec![vec![vec![zero;2];2];k+1];
+    dp[0][(x1==x2) as usize][(y1==y2) as usize] = zero+1;
+    for ki in 1..k+1 {
+        for i in 0..2 {
+            dp[ki][i][0] = dp[ki][i][0] + dp[ki-1][i][0]*(h-2) as u64;
+            dp[ki][i][0] = dp[ki][i][0] + dp[ki-1][i][1]*(h-1) as u64;
+            dp[ki][i][1] = dp[ki][i][1] + dp[ki-1][i][0]*1;
+            //dp[ki][i][1] += dp[ki-1][i][1]*0;
+        }
+        for j in 0..2 {
+            dp[ki][0][j] = dp[ki][0][j] + dp[ki-1][0][j]*(w-2) as u64;
+            dp[ki][0][j] = dp[ki][0][j] + dp[ki-1][1][j]*(w-1) as u64;
+            dp[ki][1][j] = dp[ki][1][j] + dp[ki-1][0][j]*1;
+            //dp[ki][1][j] += dp[ki-1][1][j]*0;
         }
     }
-    let mut memo = vec![vec![0;w];h];
-    let ans = f(&mut memo, 0,0,h,w, &c);
-    fn f(memo: &mut Vec<Vec<usize>>, hi: usize, wj:usize, h:usize, w:usize, c: &Vec<Vec<bool>>) -> usize {
-        if memo[hi][wj] > 0 {
-            return memo[hi][wj];
-        }
-        let mut max = 1;
-        if hi + 1 < h && c[hi+1][wj] {
-            max=max.max(f(memo,hi+1, wj,h,w,c)+1);
-        }
-        if wj + 1 < w && c[hi][wj+1] {
-            max=max.max(f(memo,hi,wj+1,h,w,c)+1);
-        }
-        memo[hi][wj] = max;
-        logln!("{:?}",memo);
-        return max;
-    }
-
-    writeln!(out, "{}", ans).ok();
+    writeln!(out, "{}", dp[k][1][1]).ok();
 }
 
 #[allow(unused)]
@@ -54,19 +51,17 @@ macro_rules! logln {
 }
 
 #[cfg(test)]
-mod abc232d {
+mod abc232e {
     use super::*;
 
     #[test]
     fn test1() {
         let input: &[u8] = b"\
-3 4
-.#..
-..#.
-..##
+2 2 2
+1 2 2 1
 ";
         let expected = "\
-4
+2
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
@@ -78,11 +73,11 @@ mod abc232d {
     #[test]
     fn test2() {
         let input: &[u8] = b"\
-1 1
-.
+1000000000 1000000000 1000000
+1000000000 1000000000 1000000000 1000000000
 ";
         let expected = "\
-1
+24922282
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
@@ -94,12 +89,8 @@ mod abc232d {
     #[test]
     fn test3() {
         let input: &[u8] = b"\
-5 5
-.....
-.....
-.....
-.....
-.....
+3 3 3
+1 3 3 3
 ";
         let expected = "\
 9
