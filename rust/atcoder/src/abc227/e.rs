@@ -34,6 +34,7 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
         for &c in b"KEY".iter() {
             for i in 0..s.len() {
                 if s[i] == c {
+                    logln!("s: {:?}", &s[i+1..]);
                     let clone = [&s[..i],&s[i+1..]].concat();
                     res += f(memo, &clone, k-i as isize);
                     break;
