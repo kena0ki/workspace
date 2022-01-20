@@ -46,7 +46,12 @@ mod abc999x {
     }
 
     #[test]
-    fn test_pg() {
+    fn test_pg1() {
+        let s = "1x2";
+        let s = s.split("x").collect::<Vec<_>>();
+        let l = s[0].parse::<i32>().unwrap();
+        let r = s[1].parse::<i32>().unwrap();
+        println!("{},{}", l, r);
         unsafe {
             let sb = b"abcdefg";
             let mut ss = Vec::from(&sb[1..4]);
