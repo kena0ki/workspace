@@ -13,7 +13,7 @@ fn main() {
 
 // https://atcoder.jp/contests/abc205/tasks/abc205_e
 // TLE
-fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+fn _solve_n2(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     const MOD: u64 = 1000000007;
     let n = scan.token::<usize>();
     let m = scan.token::<usize>();
@@ -45,6 +45,37 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     logln!("{:?}", dpn);
     logln!("{:?}", dpm);
     writeln!(out, "{}", dpn[n+m][n]).ok();
+}
+
+// https://atcoder.jp/contests/abc205/tasks/abc205_e
+fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+    const MOD: u64 = 1000000007;
+    let n = scan.token::<usize>();
+    let m = scan.token::<usize>();
+    let k = scan.token::<usize>();
+    const ZERO:ModU64::<MOD> = ModU64::new(0);
+    let mut dp = vec![vec![vec![ZERO;m+1];n+1];n+m+1];
+    dp[0][0][0] = ZERO + 1;
+    for i in 1..n+m+1 {
+        //dp[i] = dp[i-1].clone();
+        for ni in 0..n+1 { for mi in 0..m+1 {
+            if ni+1 < n+1 && ni+1<= k + mi {
+                logln!("{},{}", i,ni);
+                dp[i][ni+1][mi] = dp[i][ni+1][mi]+dp[i-1][ni][mi];
+            }
+            if mi+1 < m+1 {
+                dp[i][ni][mi+1] = dp[i][ni][mi+1]+dp[i-1][ni][mi];
+            }
+        }}
+    }
+    logln!("{:?}", dp);
+    let mut ans = ZERO;
+    for ni in 0..n+1 {
+        for mi in 0..m+1 {
+            ans += dp[n+m][ni][mi];
+        }
+    }
+    writeln!(out, "{}", dp[n+m][n][m]).ok();
 }
 
 #[allow(unused)]
