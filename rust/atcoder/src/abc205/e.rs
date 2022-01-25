@@ -12,33 +12,39 @@ fn main() {
 }
 
 // https://atcoder.jp/contests/abc205/tasks/abc205_e
+// TLE
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     const MOD: u64 = 1000000007;
     let n = scan.token::<usize>();
     let m = scan.token::<usize>();
     let k = scan.token::<usize>();
     const ZERO:ModU64::<MOD> = ModU64::new(0);
-    let mut dp = vec![vec![vec![ZERO;m+1];n+1];n+m+1];
-    dp[0][0][0] = ZERO + 1;
+    let mut dpn = vec![vec![ZERO;n+1];n+m+1];
+    let mut dpm = vec![vec![ZERO;m+1];n+m+1];
+    dpn[0][0] = ZERO + 1;
+    dpm[0][0] = ZERO + 1;
     for i in 1..n+m+1 {
-        for ni in 0..n+1 { for mi in 0..m+1 {
-            if ni+1 < n+1 && ni+1<= k + mi {
-                logln!("{},{}", i,ni);
-                dp[i][ni+1][mi] = dp[i][ni+1][mi]+dp[i-1][ni][mi];
-            }
-            if mi+1 < m+1 {
-                dp[i][ni][mi+1] = dp[i][ni][mi+1]+dp[i-1][ni][mi];
-            }
-        }}
-    }
-    logln!("{:?}", dp);
-    let mut ans = ZERO;
-    for ni in 0..n+1 {
+        for ni in 0..n+1 {
+            dpn[i][ni] = dpn[i-1][ni];
+        }
         for mi in 0..m+1 {
-            ans += dp[n+m][ni][mi];
+            dpm[i][mi] = dpm[i-1][mi];
+        }
+        logln!("{:?}", dpm);
+        for ni in 0..i {
+            let mi = i - ni -1;
+            if ni+1<= k + mi && mi <= m && ni < n{
+                dpn[i][ni+1] = dpn[i][ni+1] + dpm[i-1][mi];
+            }
+            if mi < m && ni <= n{
+                logln!("{},{},{},{},{}", i,ni,mi, dpn[i-1][ni], dpm[i][mi+1]);
+                dpm[i][mi+1] = dpm[i][mi+1] + dpn[i-1][ni];
+            }
         }
     }
-    writeln!(out, "{}", ans).ok();
+    logln!("{:?}", dpn);
+    logln!("{:?}", dpm);
+    writeln!(out, "{}", dpn[n+m][n]).ok();
 }
 
 #[allow(unused)]
