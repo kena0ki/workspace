@@ -33,7 +33,7 @@ macro_rules! logln {
 }
 
 #[cfg(test)]
-mod abc999x {
+mod abc179c {
     use super::*;
 
     #[test]
