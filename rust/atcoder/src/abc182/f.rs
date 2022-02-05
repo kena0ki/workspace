@@ -1,6 +1,6 @@
 // template
 
-use std::{io::{BufRead, BufWriter, Write}, collections::HashSet};
+use std::{io::{BufRead, BufWriter, Write}, collections::{HashSet, HashMap}};
 use rustrithm::scanner;
 
 fn main() {
@@ -13,6 +13,49 @@ fn main() {
 
 // https://atcoder.jp/contests/abc182/tasks/abc182_f
 fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+    let n = scan.token::<usize>();
+    let x = scan.token::<usize>();
+    let mut a = vec![0;n];
+    for i in 0..n {
+        a[i] = scan.token::<usize>();
+    }
+
+    let mut memo = HashMap::<(usize,usize),usize>::new();
+    let ans = f(x, 1, &a, n, &mut memo);
+    logln!("{:?}", memo);
+    writeln!(out, "{}", ans).ok();
+
+
+    fn f(x:usize, i:usize, a:&Vec<usize>, n:usize,memo: &mut HashMap<(usize,usize),usize>) -> usize {
+        //logln!("x: {} {}",x, i);
+        if memo.contains_key(&(i,x)) {
+            return memo[&(i,x)];
+        }
+        if i >= n {
+            memo.insert((i,x),1);
+            return 1;
+        }
+        if x == 0 {
+            logln!("{}",i);
+            memo.insert((i,x),1);
+            return 1;
+        }
+        let mut res = 0;
+        if x % a[i] > 0 {
+            let nx = x/a[i] * a[i];
+            res += f(nx, i+1, a, n, memo);
+            let nx = (x+a[i]-1)/a[i] * a[i];
+            res += f(nx, i+1, a, n, memo);
+        } else {
+            res += f(x, i+1, a, n, memo);
+        }
+        memo.insert((i,x), res);
+        return res;
+    }
+}
+
+// https://atcoder.jp/contests/abc182/tasks/abc182_f
+fn _solve_not_opti(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let x = scan.token::<usize>();
     let mut a = vec![0;n];
@@ -81,7 +124,8 @@ mod abc182f {
     //#[test]
     fn _test0() {
         let input: &[u8] = b"\
-40 1001
+50 1001
+1
 2
 4
 8
@@ -122,6 +166,15 @@ mod abc182f {
 274877906944
 549755813888
 1099511627776
+2199023255552
+4398046511104
+8796093022208
+17592186044416
+35184372088832
+70368744177664
+140737488355328
+281474976710656
+562949953421312
 ";
         let expected = "\
 3
@@ -188,7 +241,7 @@ mod abc182f {
 1 942454037 2827362111 19791534777 257289952101 771869856303 3859349281515 30874794252120 216123559764840
 ";
         let expected = "\
-21
+20
 ";
         let output = &mut Vec::new();
         let scan = &mut scanner::Scanner::new(input);
