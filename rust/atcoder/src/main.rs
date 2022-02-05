@@ -2,6 +2,8 @@
 
 use std::io::{BufRead, BufWriter, Write};
 use rustrithm::scanner;
+#[allow(unused)]
+use std::collections::*;
 
 fn main() {
     let sin = std::io::stdin();
