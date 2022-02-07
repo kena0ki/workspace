@@ -35,10 +35,7 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
             dp[ri][ci][3] = dp[ri][ci-1][3].max(dp[ri][ci-1][2]+v[ri][ci]);
         }
     }
-    let mut ans = 0;
-    for i in 0..4 {
-        ans = ans.max(dp[r][c][i]);
-    }
+    let ans = dp[r][c].iter().max().copied().unwrap();
 
     writeln!(out, "{}", ans).ok();
 }
