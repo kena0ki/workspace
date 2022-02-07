@@ -1,20 +1,22 @@
 // template
 
 use std::io::{BufRead, BufWriter, Write};
-use rustrithm::scanner;
 #[allow(unused)]
 use std::collections::*;
+use std::io;
+use std::str;
 
 fn main() {
     let sin = std::io::stdin();
-    let scan = &mut scanner::Scanner::new(sin.lock());
+    let scan = &mut Scanner::new(sin.lock());
     let sout = std::io::stdout();
     let out = &mut BufWriter::new(sout.lock());
     solve(scan, out);
 }
 
 // https://atcoder.jp/contests/abc175/tasks/abc175_d
-fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
+// RE
+fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let k = scan.token::<usize>();
     let mut p = Vec::with_capacity(n);
@@ -28,11 +30,11 @@ fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
         c.push(ci);
     }
     let mut dp = vec![vec![0;n];k+1];
-    let mut ans = 0;
+    let mut ans = c.iter().max().copied().unwrap();
     for i in 0..k {
         for j in 0..n {
             let nj = p[j];
-            let next = dp[i+1][nj].max(dp[i][j] + c[nj]);
+            let next = dp[i][j] + c[nj];
             dp[i+1][nj] = next;
             ans = ans.max(next);
         }
@@ -47,6 +49,30 @@ macro_rules! logln {
         #[cfg(debug_assertions)]
         println!($($arg)*);
     })
+}
+
+pub struct Scanner<R> {
+    reader: R,
+    buffer: Vec<String>,
+}
+impl<R: io::BufRead> Scanner<R> {
+    pub fn new(reader: R) -> Self {
+        Self { reader, buffer: vec![] }
+    }
+    pub fn token<T: str::FromStr>(&mut self) -> T {
+        loop {
+            if let Some(token) = self.buffer.pop() {
+                return token.parse().ok().expect("Failed parse");
+            }
+            let mut input = String::new();
+            self.reader.read_line(&mut input).expect("Failed read");
+            self.buffer = input.split_whitespace().rev().map(String::from).collect();
+        }
+    }
+    pub fn token_bytes(&mut self) -> Vec<u8> {
+        let s = self.token::<String>();
+        return s.as_bytes().into();
+    }
 }
 
 #[cfg(test)]
@@ -64,7 +90,7 @@ mod abc175d {
 8
 ";
         let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
+        let scan = &mut Scanner::new(input);
         solve(scan, output);
 
         assert_eq!(expected, std::str::from_utf8(output).unwrap());
@@ -81,7 +107,7 @@ mod abc175d {
 13
 ";
         let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
+        let scan = &mut Scanner::new(input);
         solve(scan, output);
 
         assert_eq!(expected, std::str::from_utf8(output).unwrap());
@@ -90,15 +116,15 @@ mod abc175d {
     #[test]
     fn test3() {
         let input: &[u8] = b"\
-2 3
-2 1
-10 -7
+3 3
+3 1 2
+-1000 -2000 -3000
 ";
         let expected = "\
-13
+-1000
 ";
         let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
+        let scan = &mut Scanner::new(input);
         solve(scan, output);
 
         assert_eq!(expected, std::str::from_utf8(output).unwrap());
@@ -115,7 +141,7 @@ mod abc175d {
 29507023469
 ";
         let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
+        let scan = &mut Scanner::new(input);
         solve(scan, output);
 
         assert_eq!(expected, std::str::from_utf8(output).unwrap());
