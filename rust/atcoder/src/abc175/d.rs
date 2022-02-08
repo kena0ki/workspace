@@ -15,8 +15,80 @@ fn main() {
 }
 
 // https://atcoder.jp/contests/abc175/tasks/abc175_d
-// RE
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
+    let n = scan.token::<usize>();
+    let k = scan.token::<usize>();
+    let mut p = Vec::with_capacity(n);
+    for _ in 0..n {
+        let pi = scan.token::<usize>();
+        p.push(pi-1);
+    }
+    let mut c = Vec::with_capacity(n);
+    for _ in 0..n {
+        let ci = scan.token::<i64>();
+        c.push(ci);
+    }
+    let mut cycles = vec![(Vec::<usize>::with_capacity(n),0i64);n];
+    let mut vis = vec![false; n];
+    for i in 0..n {
+        if vis[i] == true { continue; }
+        let mut x = i;
+        let mut cycle = Vec::with_capacity(n);
+        let mut tot = 0i64;
+        while vis[x] == false {
+            vis[x] = true;
+            cycle.push(x);
+            x = p[x];
+            tot += c[x];
+        }
+        cycles.push((cycle,tot));
+    }
+    // for i in 0..n {
+    //     if vis[i] == false {
+    //         let res = dfs(i,&p,&mut vis);
+    //         let mut tot = 0;
+    //         for &i in &res {
+    //             tot += c[i];
+    //         }
+    //         cycles.push((res, tot));
+    //     }
+    // }
+    // fn dfs(v: usize, p:&Vec<usize>, vis: &mut Vec<bool>) -> Vec<usize> {
+    //     if vis[v] == true {
+    //         return vec![];
+    //     }
+    //     vis[v] = true;
+    //     let mut res = dfs(p[v], p, vis);
+    //     res.push(v);
+    //     return res;
+    // }
+    let mut ans = c.iter().max().copied().unwrap();
+    for (cy, cytot) in cycles {
+        let len = cy.len();
+        for i in 0..len {
+            let mut tot = 0i64;
+            let end = len.min(k);
+            for j in 0..end {
+                tot += c[cy[(j+i)%len]];
+                ans = ans.max(tot);
+            }
+            if k < len { continue; }
+            let q = k/len-1;
+            let r = k%len;
+            let mut tot = q as i64* cytot;
+            for j in 0..(len+r) {
+                tot += c[cy[(j+i)%len]];
+                ans = ans.max(tot);
+            }
+        }
+    }
+    writeln!(out, "{}",ans).ok();
+
+}
+
+// https://atcoder.jp/contests/abc175/tasks/abc175_d
+// RE
+fn _solve_re(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let k = scan.token::<usize>();
     let mut p = Vec::with_capacity(n);
