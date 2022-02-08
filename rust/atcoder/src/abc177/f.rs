@@ -29,7 +29,7 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
         ms.insert(0);
     }
     for i in 0..h {
-        let r = cur.range(lines[i].0..=lines[i].1);
+        let r = cur.range(lines[i].0..=lines[i].1+1);
         logln!("{:?}", lines[i]);
         logln!("{:?}", r);
         let ents = r.map(|e| (*e.0,*e.1)).collect::<Vec<_>>();
