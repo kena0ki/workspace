@@ -29,7 +29,7 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     }
     let mut mset = MultiSet::new();
     for (_,v) in &mp {
-        mset.insert(v.iter().last().unwrap());
+        mset.insert(v.iter().rev().next().unwrap());
     }
     for _ in 0..q {
         let c = scan.token::<usize>()-1;
@@ -38,18 +38,18 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
         let b = vb[c];
         vb[c] = d;
         let bmset = mp.get_mut(&b).unwrap();
-        let bpre = bmset.iter().last().unwrap();
+        let bpre = bmset.iter().rev().next().unwrap();
         bmset.remove_one(a);
-        let bnew = bmset.iter().last();
+        let bnew = bmset.iter().rev().next();
         if let Some(bnew) = bnew {
             mset.insert(bnew);
         }
         mset.remove_one(bpre);
         let dmset = mp.entry(d).or_default();
-        let dpre = dmset.iter().last();
+        let dpre = dmset.iter().rev().next();
         dmset.insert(a);
         logln!("{:?}, {}", dmset,a);
-        let dnew = dmset.iter().last().unwrap();
+        let dnew = dmset.iter().rev().next().unwrap();
         if let Some(dpre) = dpre {
             mset.remove_one(dpre);
         }
@@ -128,8 +128,16 @@ impl <T:Ord+Copy> MultiSet<T> {
     pub fn iter(&self) -> Map<Iter<'_, (T,usize)>, impl FnMut(&(T,usize)) -> T> {
         return self.s.iter().map(Self::filter);
     }
+    #[inline]
     fn filter(v: &(T,usize)) -> T{
         return v.0;
+    }
+    pub fn last(&self) -> Option<T> {
+        if let Some(v) = self.s.iter().last() {
+            return Some(v.0);
+        } else {
+            return None;
+        }
     }
 
     pub fn range<R>(&self, range: R) -> Map<Range<'_, (T,usize)>, impl FnMut(&(T,usize)) -> T>
