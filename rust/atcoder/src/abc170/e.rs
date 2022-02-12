@@ -78,7 +78,7 @@ impl <T:Ord+Copy> MultiSet<T> {
     }
     pub fn insert(&mut self, val: T) {
         let r = self.s.range((Included(&(val,0)),Included(&(val,usize::max_value()))));
-        if let Some(&v) = r.last() {
+        if let Some(&v) = r.rev().next() {
             self.s.insert((val,v.1 +1));
         } else {
             self.s.insert((val,0));
@@ -86,7 +86,7 @@ impl <T:Ord+Copy> MultiSet<T> {
     }
     pub fn remove_one(&mut self, val: T) -> bool {
         let r = self.s.range((Included(&(val,0)),Included(&(val,usize::max_value()))));
-        if let Some(&v) = r.last() {
+        if let Some(&v) = r.rev().next() {
             return self.s.remove(&v);
         }
         return false;
