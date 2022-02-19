@@ -12,12 +12,6 @@ fn main() {
     solve(scan, out);
 }
 
-// https://atcoder.jp/contests/abc222/tasks/abc222_a
-fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let a = scan.token::<usize>();
-    writeln!(out, "{} 3", a).ok();
-}
-
 #[allow(unused)]
 #[macro_export]
 macro_rules! logln {
@@ -73,4 +67,10 @@ mod abc999x {
 1 3
 ");
 
+}
+
+// https://atcoder.jp/contests/abc222/tasks/abc222_a
+fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
+    let a = scan.token::<usize>();
+    writeln!(out, "{} 3", a).ok();
 }
