@@ -74,3 +74,4 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let a = scan.token::<usize>();
     writeln!(out, "{} 3", a).ok();
 }
+
