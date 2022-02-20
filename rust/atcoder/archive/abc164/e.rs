@@ -46,7 +46,7 @@ impl<R: ::std::io::BufRead> Scanner<R> {
 }
 
 #[cfg(test)]
-mod abc999x {
+mod abc164e {
     use super::*;
 
     macro_rules! test_macro {
@@ -128,6 +128,15 @@ mod abc999x {
 5
 ");
 
+    test_macro!(test5, b"\
+2 1 0
+1 2 1 1
+1 1000000000
+1 1
+" , "\
+1000000001
+");
+
 }
 
 // https://atcoder.jp/contests/abc164/tasks/abc164_e
@@ -152,22 +161,35 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     }
 
     let maxa = 5000;
-    let inf = 1001001001;
+    let inf = 1<<60;
     let mut que = BinaryHeap::<Reverse<(usize,usize,usize)>>::with_capacity(maxa * n);
-    let mut dist = vec![vec![inf;maxa];n];
-    let push = |v:usize,i:usize,d:usize,dist:&mut Vec<Vec<usize>>, que: &mut BinaryHeap<_>| {
-        if dist[v][i] <= d { return; }
-        dist[v][i] = d;
-        que.push(Reverse((d,v,i)));
+    let mut dist = vec![vec![inf;maxa+1];n];
+    let push = |v:usize,i:usize,dis:usize,dist:&mut Vec<Vec<_>>, que: &mut BinaryHeap<_>| {
+        if dist[v][i] <= dis { return; }
+        dist[v][i] = dis;
+        for j in (0..i).rev() {
+            dist[v][j] = dist[v][j].min(dist[v][j+1]);
+        }
+        que.push(Reverse((dis,v,i)));
     };
-    while let Some(Reverse((d,u,i))) = que.pop() {
-        if dist[u][i] < d { continue; }
+    push(0,s.min(maxa),0,&mut dist, &mut que);
+    while let Some(Reverse((dis,u,i))) = que.pop() {
+        logln!("{},{},{}", dis,u,i);
+        if dist[u][i] < dis { continue; }
         for &(v,a,b) in &adj[u] {
             if i >= a {
-                push(v,i-a,b,&mut dist,&mut que);
+                push(v,i-a,dis+b,&mut dist,&mut que);
             }
-
         }
+        let (c,d) = vc[u];
+        let t = dis+d;
+        let x = i+c;
+        push(u,x.min(maxa),t,&mut dist,&mut que);
+    }
+    for v in 1..n {
+        //let ans = dist[v].iter().min().copied().unwrap();
+        let ans = dist[v][0];
+        writeln!(out, "{}",ans).ok();
     }
 }
 
