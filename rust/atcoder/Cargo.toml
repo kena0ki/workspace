@@ -11,6 +11,8 @@ bin = [
   #{name="edpc_p", path="src/edpc/p.rs"},
   #{name="edpc_q", path="src/edpc/q.rs"},
   #{name="edpc_t", path="src/edpc/t.rs"},
+  #{name="abc161d", path="src/abc161/d.rs"},
+  {name="abc161e", path="src/abc161/e.rs"},
   #{name="abc162f", path="src/abc162/f.rs"},
   #{name="abc163e", path="src/abc163/e.rs"},
   #{name="abc164e", path="src/abc164/e.rs"},
