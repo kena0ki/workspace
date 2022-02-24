@@ -91,17 +91,14 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let mut dp = vec![vec![0;s+1];n+1];
     const MOD:usize = 998244353;
     dp[0][0]=1;
+    let mut ans = 0;
     for i in 0..n {
         let a = scan.token::<usize>();
         for j in 0..s+1 {
             dp[i+1][j] += dp[i][j];
             dp[i+1][j] %= MOD;
-            if j+a < s {
+            if j+a <= s {
                 dp[i+1][j+a] += dp[i][j];
-                dp[i+1][j+a] %= MOD;
-            }
-            if j+a == s {
-                dp[i+1][j+a] += dp[i][j]*(n-i);
                 dp[i+1][j+a] %= MOD;
             }
         }
@@ -110,7 +107,9 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
         dp[i+1][0] %= MOD;
         //dp[i+1][s] += dp[i][s];
         logln!("{:?}", dp[i+1]);
+        ans += dp[i+1][s];
     }
-    writeln!(out, "{}", dp[n][s]).ok();
+    //writeln!(out, "{}", dp[n][s]).ok();
+    writeln!(out, "{}", ans).ok();
 }
 
