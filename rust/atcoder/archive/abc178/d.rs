@@ -1,36 +1,15 @@
 // template
 
 use std::io::{BufRead, BufWriter, Write};
-use rustrithm::{scanner, math::modulo::ModU64};
 #[allow(unused)]
 use std::collections::*;
 
 fn main() {
     let sin = std::io::stdin();
-    let scan = &mut scanner::Scanner::new(sin.lock());
+    let scan = &mut Scanner::new(sin.lock());
     let sout = std::io::stdout();
     let out = &mut BufWriter::new(sout.lock());
     solve(scan, out);
-}
-
-// https://atcoder.jp/contests/abc178/tasks/abc178_d
-fn solve(scan: &mut scanner::Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    const MOD:u64 = 1000000007;
-    const ZERO:ModU64<MOD> = ModU64::<MOD>::new(0);
-    let mut dp =vec![vec![ZERO;n+1];n+1];
-    dp[0][0]=ZERO+1;
-    let mut ans = ZERO;
-    for i in 0..n {
-        for j in 0..n+1-3 {
-            dp[i+1][j+3] = dp[i][j];
-        }
-        for j in 0..n {
-            dp[i+1][j+1] = dp[i+1][j+1] + dp[i+1][j];
-        }
-        ans += dp[i+1][n];
-    }
-    writeln!(out,"{}", ans).ok();
 }
 
 #[allow(unused)]
@@ -42,52 +21,78 @@ macro_rules! logln {
     })
 }
 
-#[cfg(test)]
-mod abc178d {
-    use super::*;
-
-    #[test]
-    fn test1() {
-        let input: &[u8] = b"\
-7
-";
-        let expected = "\
-3
-";
-        let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
-        solve(scan, output);
-
-        assert_eq!(expected, std::str::from_utf8(output).unwrap());
+pub struct Scanner<R> {
+    reader: R,
+    buffer: Vec<String>,
+}
+impl<R: ::std::io::BufRead> Scanner<R> {
+    pub fn new(reader: R) -> Self {
+        Self { reader, buffer: vec![] }
     }
-
-    #[test]
-    fn test2() {
-        let input: &[u8] = b"\
-2
-";
-        let expected = "\
-0
-";
-        let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
-        solve(scan, output);
-
-        assert_eq!(expected, std::str::from_utf8(output).unwrap());
+    pub fn token<T: ::std::str::FromStr>(&mut self) -> T {
+        loop {
+            if let Some(token) = self.buffer.pop() {
+                return token.parse().ok().expect("Failed parse");
+            }
+            let mut input = String::new();
+            self.reader.read_line(&mut input).expect("Failed read");
+            self.buffer = input.split_whitespace().rev().map(String::from).collect();
+        }
     }
-
-    #[test]
-    fn test3() {
-        let input: &[u8] = b"\
-1729
-";
-        let expected = "\
-294867501
-";
-        let output = &mut Vec::new();
-        let scan = &mut scanner::Scanner::new(input);
-        solve(scan, output);
-
-        assert_eq!(expected, std::str::from_utf8(output).unwrap());
+    pub fn token_bytes(&mut self) -> Vec<u8> {
+        let s = self.token::<String>();
+        return s.as_bytes().into();
     }
 }
+
+#[cfg(test)]
+mod abc999x {
+    use super::*;
+
+    macro_rules! test_macro {
+        ($name:ident, $input:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let output = &mut Vec::new();
+                let scan = &mut Scanner::new($input as &[u8]);
+                solve(scan, output);
+                assert_eq!($expected, std::str::from_utf8(output).unwrap());
+            }
+        };
+    }
+
+    test_macro!(test1, b"\
+7
+" , "\
+3
+");
+
+    test_macro!(test2, b"\
+2
+" , "\
+0
+");
+
+    test_macro!(test3, b"\
+1729
+" , "\
+294867501
+");
+
+}
+
+// https://atcoder.jp/contests/abc222/tasks/abc222_a
+fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
+    let s = scan.token::<usize>();
+    let mut dp = vec![0usize;s+1];
+    let md = 1000000007;
+    let mut sum = 1;
+    for i in 3..s+1 {
+        sum+=dp[i-3];
+        sum %= md;
+        dp[i] = sum;
+        logln!("{:?}",dp);
+    }
+    writeln!(out, "{}", dp[s]).ok();
+}
+

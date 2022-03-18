@@ -283,6 +283,84 @@ fn _solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     }
 }
 
+// https://atcoder.jp/contests/abc178/tasks/abc178_f
+// multiset
+fn _solve_ms(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
+    let n = scan.token::<usize>();
+    let mut va = Vec::with_capacity(n);
+    let mut cnt = vec![0;n+1];
+    for _ in 0..n {
+        let a = scan.token::<usize>();
+        va.push(a);
+        cnt[a] += 1;
+    }
+    let mut vb = Vec::with_capacity(n);
+    let mut cntb = vec![0;n+1];
+    for _ in 0..n {
+        let b = scan.token::<usize>();
+        vb.push(b);
+        cnt[b] += 1;
+        cntb[b] += 1;
+    }
+    let mut ms = MultiSet::new();
+    let mut msb = MultiSet::new();
+    for i in 1..n+1 {
+        if cnt[i] > 0 {
+            ms.insert((cnt[i],i));
+        }
+        if cntb[i] > 0 {
+            msb.insert((cntb[i],i));
+        }
+    }
+    let mut ans = Vec::with_capacity(n);
+    for i in 0..n {
+        logln!("ms :{:?}",ms);
+        logln!("msb:{:?}",msb);
+        let (max,v) = ms.last().unwrap();
+        if max > n-i {
+            writeln!(out, "No").ok();
+            return;
+        }
+        let a = va[i];
+        ms.remove_one((cnt[a],a));
+        cnt[a] -= 1;
+        if cnt[a] > 0 {
+            ms.insert((cnt[a],a));
+        }
+        let mut bp;
+        if v != a && msb.contains((cntb[v],v)) {
+            bp = (cntb[v],v);
+        } else {
+            let mut iter = msb.iter().rev();
+            bp = iter.next().unwrap();
+            if bp.1 == a {
+                if iter.len() == 0 {
+                    writeln!(out, "No").ok();
+                    return;
+                }
+                bp = iter.next().unwrap();
+            }
+        }
+        let (_, b) = bp;
+        ans.push(b);
+        msb.remove_one((cntb[b],b));
+        cntb[b] -= 1;
+        if cntb[b] > 0 {
+            msb.insert((cntb[b],b));
+        }
+        ms.remove_one((cnt[b],b));
+        cnt[b] -= 1;
+        if cnt[b] > 0 {
+            ms.insert((cnt[b],b));
+        }
+    }
+    writeln!(out, "Yes").ok();
+    let mut delim = vec![" ";n];
+    delim[n-1] = "\n";
+    for i in 0..n {
+        write!(out, "{}{}", ans[i], delim[i]).ok();
+    }
+}
 #[allow(unused)]
 #[macro_export]
 macro_rules! logln {
