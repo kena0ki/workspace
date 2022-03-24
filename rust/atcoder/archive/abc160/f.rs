@@ -4,15 +4,82 @@ use std::io::{BufRead, BufWriter, Write};
 #[allow(unused)]
 use std::collections::*;
 
-use rustrithm::math::{combin::Factorial, modulo::{MOD1000000007, ZERO_MOD1000000007, ModU64}};
+pub fn pow(val:usize, mut power: usize, modulus:usize) -> usize {
+    let mut square = val;
+    let mut ret = 1;
+    while 0 < power {
+        if (power & 1) == 1{
+            ret *= square;
+            ret %= modulus;
+        }
+        square *= square;
+        square %= modulus;
+        power >>= 1;
+    }
+    return ret;
+}
+pub fn inv(val: usize, modulus:usize) -> usize {
+    return pow(val, modulus - 2, modulus);
+}
+
+
+/// About usage, see mod test block below.
+pub trait EntitySpec<T>: Copy {
+    fn identity() -> Self;
+    fn add(&self, rhs: Self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
+    fn sub(&self, rhs: Self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
+    fn add_root(&self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
+}
+
+pub struct Rerooting<T, E:EntitySpec<T>> {
+    pub t:T,
+    pub dp:Vec<E>,
+    pub adj:Vec<Vec<usize>>,
+}
+
+impl <T, E:EntitySpec<T>> Rerooting<T, E> {
+    pub fn new(n: usize, t:T) -> Self {
+        Self {
+            t,
+            dp:vec![E::identity();n],
+            adj:vec![Vec::with_capacity(n-1);n],
+        }
+    }
+    pub fn add_edge(&mut self, u:usize, v:usize) {
+        self.adj[u].push(v);
+    }
+    pub fn rerooting(&mut self) {
+        Self::dfs1(0,usize::max_value(), &self.adj, &mut self.dp, &self.t);
+        Self::dfs2(0,usize::max_value(), &self.adj, &mut self.dp, &self.t);
+    }
+    fn dfs1(u:usize, p:usize, adj: &Vec<Vec<usize>>, dp:&mut Vec<E>, t: &T) {
+        let mut val = E::identity();
+        for &v in &adj[u] {
+            if p == v { continue; }
+            Self::dfs1(v,u,adj,dp,t);
+            let dp_v = dp[v].add_root(v,adj, t);
+            val = val.add(dp_v, v, adj, t);
+        }
+        dp[u] = val;
+    }
+    fn dfs2(u:usize, p:usize, adj: &Vec<Vec<usize>>, dp:&mut Vec<E>, t:&T) {
+        for &v in &adj[u] {
+            if p == v { continue; }
+            let dp_v = dp[v].add_root(v,adj,t);
+            let dp_u = dp[u].sub(dp_v,v,adj,t);
+            let dp_u = dp_u.add_root(v,adj,t);
+            dp[v] = dp[v].add(dp_u,v,adj,t);
+            Self::dfs2(v,u,adj,dp,t);
+        }
+    }
+}
 
 fn main() {
     let sin = std::io::stdin();
     let scan = &mut Scanner::new(sin.lock());
     let sout = std::io::stdout();
     let out = &mut BufWriter::new(sout.lock());
-    solve(scan, out);
-}
+    solve(scan, out); }
 
 #[allow(unused)]
 #[macro_export]
@@ -117,100 +184,67 @@ mod abc999x {
 
 }
 
-pub trait EntitySpec<T>: Copy {
-    fn identity() -> Self;
-    fn add(&self, rhs: Self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
-    fn sub(&self, rhs: Self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
-    fn add_root(&self, v:usize, adj: &Vec<Vec<usize>>, t: &T) -> Self;
-}
+const MOD:usize = 1000000007;
 
-pub struct Rerooting<T, E:EntitySpec<T>> {
-    pub t:T,
-    pub dp:Vec<E>,
-    pub adj:Vec<Vec<usize>>,
-}
-
-impl <T, E:EntitySpec<T>> Rerooting<T, E> {
-    pub fn new(n: usize, t:T) -> Self {
-        Self {
-            t,
-            dp:vec![E::identity();n],
-            adj:vec![Vec::with_capacity(n-1);n],
-        }
-    }
-    pub fn add_edge(&mut self, u:usize, v:usize) {
-        self.adj[u].push(v);
-    }
-    pub fn rerooting(&mut self) {
-        Self::dfs1(0,usize::max_value(), &self.adj, &mut self.dp, &self.t);
-        Self::dfs2(0,usize::max_value(), &self.adj, &mut self.dp, &self.t);
-    }
-    fn dfs1(u:usize, p:usize, adj: &Vec<Vec<usize>>, dp:&mut Vec<E>, t: &T) {
-        let mut val = E::identity();
-        for &v in &adj[u] {
-            if p == v { continue; }
-            Self::dfs1(v,u,adj,dp,t);
-            let dp_v = dp[v].add_root(v,adj, t);
-            val = val.add(dp_v, v, adj, t);
-        }
-        dp[u] = val;
-    }
-    fn dfs2(u:usize, p:usize, adj: &Vec<Vec<usize>>, dp:&mut Vec<E>, t:&T) {
-        for &v in &adj[u] {
-            if p == v { continue; }
-            let dp_v = dp[v].add_root(v,adj,t);
-            let dp_u = dp[u].sub(dp_v,v,adj,t);
-            let dp_u = dp_u.add_root(v,adj,t);
-            dp[v] = dp[v].add(dp_u,v,adj,t);
-            Self::dfs2(v,u,adj,dp,t);
-        }
-    }
-}
-
-type FactM = Factorial<MOD1000000007>;
 #[derive(Clone,Copy)]
-pub struct Entity {
-    val:ModU64<MOD1000000007>,
-    size:u64,
+struct Entity {
+    val: usize,
+    size: usize,
 }
-impl EntitySpec<FactM> for Entity {
+
+impl EntitySpec<(Vec<usize>,Vec<usize>)> for Entity {
+    fn add_root(&self, _v:usize, _adj: &Vec<Vec<usize>>, _t: &(Vec<usize>,Vec<usize>)) -> Self {
+        return Self { val: self.val, size: self.size + 1 };
+    }
     fn identity() -> Self {
-        return Self { val:ZERO_MOD1000000007+1, size:0 };
+        return Self { val:1, size:0 };
     }
-    fn add(&self, rhs: Self, _:usize, _adj: &Vec<Vec<usize>>, t:&FactM) -> Self {
-        let newsize = self.size+rhs.size;
-        let mut newval = self.val;
-        newval *= rhs.val;
-        newval *= t.combin(newsize, rhs.size);
-        return Self { val:newval, size: newsize };
+    fn add(&self, rhs: Self, _v:usize, _adj: &Vec<Vec<usize>>, t: &(Vec<usize>,Vec<usize>)) -> Self {
+        let (fct,ifct) = t;
+        let size = self.size + rhs.size;
+        let val = self.val * rhs.val;
+        let val = val % MOD;
+        let c = fct[size]*ifct[size-rhs.size]%MOD*ifct[rhs.size]%MOD;
+        let val = val * c;
+        let val = val % MOD;
+        return Self { val, size };
     }
-    fn sub(&self, rhs: Self, _:usize, _adj: &Vec<Vec<usize>>, t:&FactM) -> Self {
-        let mut newval = self.val;
-        newval /= rhs.val;
-        newval /= t.combin(self.size, rhs.size);
-        logln!("{},{}", self.size, rhs.size);
-        let newsize = self.size-rhs.size;
-        return Self { val:newval, size: newsize };
-    }
-    fn add_root(&self, _v:usize, _adj: &Vec<Vec<usize>>, _:&FactM) -> Self {
-        return Self { val: self.val, size: self.size+1 };
+    fn sub(&self, rhs: Self, _v:usize, _adj: &Vec<Vec<usize>>, t: &(Vec<usize>,Vec<usize>)) -> Self {
+        let (fct,ifct) = t;
+        let val = self.val * inv(rhs.val, MOD);
+        let val = val % MOD;
+        let c = ifct[self.size]*fct[self.size-rhs.size]%MOD*fct[rhs.size]%MOD;
+        let val = val * c;
+        let val = val % MOD;
+        let size = self.size - rhs.size;
+        return Self { val, size };
     }
 }
 
-// https://atcoder.jp/contests/abc160/tasks/abc160_f
+// https://atcoder.jp/contests/abc163/tasks/abc163_f
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
-    let fact = Factorial::<MOD1000000007>::new(2001001);
-    let mut r = Rerooting::<_,Entity>::new(n,fact);
+    let mut fct = vec![0usize;n+1];
+    fct[0] = 1;
+    for i in 0..n {
+        fct[i+1] = fct[i] * (i+1) % MOD;
+    }
+    let mut ifct = vec![0;n+1];
+    ifct[n] = inv(fct[n],MOD);
+    for i in (1..n+1).rev() {
+        ifct[i-1] = ifct[i] * i % MOD;
+    }
+
+    let mut re = Rerooting::<_, Entity>::new(n,(fct,ifct));
     for _ in 0..n-1 {
         let u = scan.token::<usize>()-1;
         let v = scan.token::<usize>()-1;
-        r.add_edge(u,v);
-        r.add_edge(v,u);
+        re.add_edge(u,v);
+        re.add_edge(v,u);
     }
-    r.rerooting();
+    re.rerooting();
     for i in 0..n {
-        writeln!(out, "{}", r.dp[i].val).ok();
+        writeln!(out, "{}", re.dp[i].val).ok();
     }
 }
 

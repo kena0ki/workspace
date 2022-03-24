@@ -46,7 +46,7 @@ impl<R: ::std::io::BufRead> Scanner<R> {
 }
 
 #[cfg(test)]
-mod abc163e {
+mod abc999x {
     use super::*;
 
     macro_rules! test_macro {
@@ -89,29 +89,26 @@ fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
     let mut va = Vec::with_capacity(n);
     for i in 0..n {
-        let a = scan.token::<usize>();
-        va.push((a,i));
+        let a = scan.token::<i64>();
+        va.push((a,i as i64));
     }
     va.sort_unstable_by(|a,b| b.cmp(a));
-    let mut dp = vec![vec![0;n+1];n+1];
+    let inf = 1i64<<60;
+    let mut dp = vec![vec![-inf;n+1];n+1];
+    dp[0][0] = 0;
     for i in 0..n {
-        let (a,ai) = va[i];
-        logln!("{:?}", va[i]);
-        let ni = i+1;
+        let (a,pi) = va[i];
+        logln!("{},{}", a,pi);
         for j in 0..i+1 {
-            let nj = j+1;
-            let l = j;
-            if l <= ai {
-                dp[ni][nj] = dp[ni][nj].max(dp[i][j] + (a * (ai-l)));
-            }
-            let r = n-1-(i-j);
-            if  ai <= r {
-                dp[ni][j] = dp[ni][j].max(dp[i][j] + (a * (r-ai)));
-            }
+            let l = j as i64;
+            let r = (n-1-(i-j)) as i64;
+            dp[i+1][j+1] = dp[i+1][j+1].max(dp[i][j] + (l-pi).abs() * a);
+            dp[i+1][j] = dp[i+1][j].max(dp[i][j] + (r-pi).abs() * a);
         }
-        logln!("{:?}",dp[ni]);
+        logln!("{:?}", dp[i+1]);
     }
-    let ans = dp[n].iter().max().copied().unwrap();
+    let ans = dp[n].iter().max().unwrap();
+
     writeln!(out, "{}", ans).ok();
 }
 
