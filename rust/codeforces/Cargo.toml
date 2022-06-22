@@ -1,0 +1,18 @@
+bin = [
+  {name="a", path="src/contest/a.rs"},
+  {name="b", path="src/contest/b.rs"},
+  {name="c", path="src/contest/c.rs"},
+  {name="d", path="src/contest/d.rs"},
+  {name="e", path="src/contest/e.rs"},
+]
+
+[package]
+name = "codeforces"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rustrithm = { git = "https://github.com/kena0ki/rustrithm" }
+
