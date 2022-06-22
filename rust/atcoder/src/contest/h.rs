@@ -136,7 +136,7 @@ Copy
 
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
+    let n:usize = scan.token();
     writeln!(out, "{}", n).ok();
 }
 

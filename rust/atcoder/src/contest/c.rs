@@ -92,7 +92,7 @@ mod abc999x {
     }
 
     test_macro!(
-est0,
+test0,
 test1,
 test2,
 test3,
@@ -103,14 +103,18 @@ est7,
 |
 "\
 入力例 0 
+Copy
+aaaaaa
+出力例 0 
+Copy
 ",
 "\
 入力例 1 
 Copy
-2
+kasaka
 出力例 1 
 Copy
-2
+Yes
 ",
 "\
 入力例 2 
@@ -136,7 +140,25 @@ Copy
 
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    let s = scan.token::<String>().as_bytes().to_vec();
+    let n=s.len();
+    let mut r = n-1;
+    while r>0 && s[r]==b'a' { r-=1 };
+    let mut l = 0;
+    while l<n-1-r && s[l]==b'a' { l+=1 };
+    if l>r {
+        writeln!(out, "Yes").ok();
+        return;
+    }
+    let t = s[l..r+1].to_vec();
+    let mut tr = t.clone();
+    tr.reverse();
+    if t==tr {
+        writeln!(out, "Yes").ok();
+    } else {
+        writeln!(out, "No").ok();
+    }
+    logln!("{}",String::from_utf8_lossy(&t));
+    logln!("{}",String::from_utf8_lossy(&tr));
 }
 

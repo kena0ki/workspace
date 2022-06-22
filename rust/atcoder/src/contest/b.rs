@@ -107,10 +107,16 @@ est7,
 "\
 入力例 1 
 Copy
-2
+4 3
+1 2 3
+4 5 6
+7 8 9
+10 11 12
 出力例 1 
 Copy
-2
+1 4 7 10
+2 5 8 11
+3 6 9 12
 ",
 "\
 入力例 2 
@@ -136,7 +142,18 @@ Copy
 
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    let h:usize = scan.token();
+    let w:usize = scan.token();
+    let mut vva = vec![vec![0;w];h];
+    for i in 0..h { for j in 0..w {
+        let a:usize = scan.token();
+        vva[i][j]=a;
+    }}
+    for i in 0..w {
+        for j in 0..h {
+            write!(out, "{} ", vva[j][i]).ok();
+        }
+        writeln!(out).ok();
+    }
 }
 

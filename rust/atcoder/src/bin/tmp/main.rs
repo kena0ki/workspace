@@ -1,7 +1,64 @@
-
 use std::{io::{BufRead, BufWriter, Write}, hash::Hash};
 #[allow(unused)]
 use std::{{collections::*, mem::swap},cmp::Reverse};
+
+use std::collections::HashMap;
+
+/// Represents a union of disjoint sets. Each set's elements are arranged in a
+/// tree, whose root is the set's representative.
+#[derive(Debug,Default,Clone)]
+pub struct DisjointSets {
+    parent: Vec<usize>,
+    num_nodes: HashMap<usize,usize>,
+}
+
+impl DisjointSets {
+    /// Initializes disjoint sets containing one element each.
+    pub fn new(size: usize) -> Self {
+        Self {
+            parent: (0..size).collect(),
+            num_nodes: HashMap::<_,_>::with_capacity(size),
+        }
+    }
+
+    /// Finds the set's representative. Do path compression along the way to make
+    /// future queries faster.
+    pub fn find(&mut self, u: usize) -> usize {
+        let pu = self.parent[u];
+        if pu != u {
+            self.parent[u] = self.find(pu);
+        }
+        self.parent[u]
+    }
+
+    /// Merges the sets containing u and v into a single set containing their
+    /// union. Returns true if u and v were previously in different sets.
+    pub fn merge(&mut self, u: usize, v: usize) -> bool {
+        let (pu, cu) = self.find_and_count(u);
+        let (pv, cv) = self.find_and_count(v);
+        let diff = pu != pv;
+        if diff {
+            self.num_nodes.remove(&pu);
+            self.num_nodes.insert(pv, cv+cu);
+        }
+        self.parent[pu] = pv;
+        diff
+    }
+
+    /// Returns the set's representative with the number of nodes in the set.
+    pub fn find_and_count(&mut self, v:usize) -> (usize, usize) {
+        let p = self.find(v);
+        if let Some(&num) = self.num_nodes.get(&p) {
+            return (p, num);
+        }
+        return (v, 1);
+    }
+
+    /// Returns the number of nodes in the set.
+    pub fn count(&mut self, v:usize) -> usize {
+        return self.find_and_count(v).1;
+    }
+}
 
 fn main() {
     let sin = std::io::stdin();
@@ -93,10 +150,10 @@ mod abc999x {
     }
 
     test_macro!(
-tst0,
+test0,
 test1,
 test2,
-tst3,
+test3,
 tst4,
 tst5,
 tst6,
@@ -104,35 +161,58 @@ tst7,
 |
 "\
 入力例 0 
+Copy
+7
+5 3 2 4 7 1 6
+5
+1 5
+5 6
+1 2
+2 3
+1 7
 ",
 "\
 入力例 1 
 Copy
-4 1
+6
+5 3 2 4 6 1
+4
+1 5
+5 6
 1 2
 2 3
-3 4
 出力例 1 
 Copy
-6
+3
+4 2 1
 ",
 "\
 入力例 2 
 Copy
-8 3
-1 2
-4 6
-6 7
-3 2
-2 4
-4 5
-8 6
+5
+3 4 1 2 5
+2
+1 3
+2 5
 出力例 2 
 Copy
-9
+-1
 ",
 "\
 入力例 3 
+Copy
+4
+1 2 3 4
+6
+1 2
+1 3
+1 4
+2 3
+2 4
+3 4
+出力例 3 
+Copy
+0
 ",
 "\
 入力例 4 
@@ -150,62 +230,64 @@ Copy
 
 }
 
+
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
-    let k = scan.token::<usize>();
+    let mut vp = vec![0;n];
+    for i in 0..n {
+        let p = scan.token::<usize>()-1;
+        vp[i]=p;
+    }
+    let m = scan.token::<usize>();
     let mut vva = vec![Vec::new();n];
-    for _ in 0..n-1 {
-        let u = scan.token::<usize>()-1;
-        let v = scan.token::<usize>()-1;
-        vva[u].push(v);
-        vva[v].push(u);
+    let mut ds = DisjointSets::new(n);
+    for i in 0..m {
+        let a = scan.token::<usize>()-1;
+        let b = scan.token::<usize>()-1;
+        if ds.find(a)==ds.find(b) {
+            continue;
+        }
+        vva[a].push((i+1,b));
+        vva[b].push((i+1,a));
+        ds.merge(a,b);
+    }
+    let mut vis=vec![false;n];
+    let mut ans = Vec::new();
+    for i in 0..n {
+        if vis[i] { continue; }
+        if !f1(&vva,i,n,&mut vis, &mut vp, &mut ans) {
+            writeln!(out, "{}", -1).ok();
+            return;
+        }
     }
 
-    let (dp0,dp1) = f(&vva,0,n,k);
-    let ans = dp0[k]+dp1[k];
-    writeln!(out, "{}", ans).ok();
-
-    fn f(vva: &Vec<Vec<usize>>, u: usize, p:usize, k:usize) -> (Vec<usize>,Vec<usize>) {
-        let mut dp0 = vec![0;k+1];
-        dp0[0]=1;
-        let mut vtmp0 = Vec::<Vec<usize>>::new();
-        let mut vtmp1 = Vec::<Vec<usize>>::new();
-        for &v in &vva[u] {
-            if v == p { continue; }
-            let (dpv0,dpv1) = f(vva,v,u,k);
-            let mut tmp0 = dp0.clone();
-            let mut tmp1 = dp0.clone();
-            for i in (0..k+1).rev() { for j in (0..k+1).rev() {
-                let nk = i+j;
-                if nk > k || nk==0 { continue; }
-                let (v0,v1) = (dpv0[j],dpv1[j]);
-                dp0[nk] += dp0[i]*(v0+v1);
-                tmp0[nk] += tmp0[i]*(v0);
-                tmp1[nk] += tmp1[i]*(v1);
-                for t in 0..vtmp0.len() {
-                    vtmp0[t][nk] += vtmp0[t][i]*(v0+v1);
-                }
-                for t in 0..vtmp0.len() {
-                    vtmp1[t][nk] += vtmp1[t][i]*(v0+v1);
-                }
-            }}
-            vtmp0.push(tmp0);
-            vtmp1.push(tmp1);
-        }
-        let mut dp1 = vec![0;k+1];
-        for i in 0..vtmp0.len() {
-            for j in 0..k+1 {
-                if j>= 1 {
-                    dp1[j] = vtmp0[i][j-1] + vtmp1[i][j];
-                } else {
-                    dp1[j] = vtmp1[i][j];
-                }
-            }
-        }
-        logln!("{},{:?},{:?},{:?},{:?}",u,dp0,dp1,vtmp0,vtmp1);
-
-
-        return (dp0,dp1);
+    let m=ans.len();
+    writeln!(out, "{}", m).ok();
+    for (i,&a) in ans.iter().enumerate() {
+        write!(out, "{}{}", a,b" \n"[(i+1)/m] as char).ok();
     }
+}
+fn f1(vva:&Vec<Vec<(usize,usize)>>, u:usize, p:usize, vis:&mut Vec<bool>, vp: &mut Vec<usize>,ans: &mut Vec<usize>) -> bool {
+    vis[u]=true;
+    for &(_,v) in &vva[u] {
+        if v==p { continue; }
+        if !f1(vva,v,u,vis,vp,ans) {
+            return false;
+        }
+    }
+    return f2(vva,u,usize::max_value(),u,vp,ans);
+}
+fn f2(vva:&Vec<Vec<(usize,usize)>>, u:usize, p:usize, s:usize, vp:&mut Vec<usize>,ans: &mut Vec<usize>) -> bool {
+    if vp[u]==s { return true; }
+    for &(e,v) in &vva[u] {
+        if v==p { continue; }
+        if f2(vva,v,u,s,vp,ans) {
+            vp.swap(u,v);
+            ans.push(e);
+            logln!("{:?}",vp);
+            return true;
+        }
+    }
+    return false;
 }
 

@@ -107,16 +107,26 @@ est7,
 "\
 入力例 1 
 Copy
-2
+4 5
 出力例 1 
 Copy
-2
+135
 ",
 "\
 入力例 2 
+Copy
+3 4
+出力例 2 
+Copy
+4
 ",
 "\
 入力例 3 
+Copy
+111 3
+出力例 3 
+Copy
+144980434
 ",
 "\
 入力例 4 
@@ -134,9 +144,29 @@ Copy
 
 }
 
+const MOD:usize = 998244353;
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    let n:usize = scan.token();
+    let m:usize = scan.token();
+    let mut dp = vec![vec![vec![0;4];m+1];n+1];
+    dp[0][0][0]=1;
+    for i in 1..n+1 { for j in 1..m+1 { for k in 0..4 {
+        for pi in 0..i { for pj in 0..m+1 {
+            if k==0 && j>pj { continue; }
+            let pk=if j>pj { k-1 } else { k };
+            dp[i][j][k] += dp[pi][pj][pk]%MOD;
+            dp[i][j][k] %=MOD;
+        }}
+    }}
+    logln!("{:?}", dp[i]);
+    }
+    logln!("{:?}", dp[n][m][3]);
+    let mut ans = 0;
+    for j in 1..m+1 {
+        ans += dp[n][j][3];
+        ans %= MOD;
+    }
+    writeln!(out, "{}", ans).ok();
 }
 

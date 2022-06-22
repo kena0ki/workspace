@@ -37,7 +37,7 @@ checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
 [[package]]
 name = "rustrithm"
 version = "0.1.0"
-source = "git+https://github.com/kena0ki/rustrithm#15d075332042c969bd2d5085f0241b6939e44a0f"
+source = "git+https://github.com/kena0ki/rustrithm#bcd7cbd7d3e1d78d5a6b6ce6ee9e0c076ab861e2"
 
 [[package]]
 name = "tap"

@@ -107,13 +107,20 @@ est7,
 "\
 入力例 1 
 Copy
-2
+5
+LRRLR
 出力例 1 
 Copy
-2
+1 2 4 5 3 0
 ",
 "\
 入力例 2 
+Copy
+7
+LLLLLLL
+出力例 2 
+Copy
+7 6 5 4 3 2 1 0
 ",
 "\
 入力例 3 
@@ -136,7 +143,21 @@ Copy
 
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    let mut n:usize = scan.token();
+    let vs = scan.token::<String>().as_bytes().to_vec();
+    let mut ans = VecDeque::new();
+    ans.push_back(n);
+    for &s in vs.iter().rev() {
+        n-=1;
+        if s==b'R' {
+            ans.push_front(n);
+        } else {
+            ans.push_back(n);
+        }
+    }
+    for i in 0..ans.len() {
+        write!(out, "{} ", ans[i]).ok();
+    }
+    writeln!(out).ok();
 }
 

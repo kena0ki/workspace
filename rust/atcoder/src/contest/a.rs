@@ -107,16 +107,26 @@ est7,
 "\
 入力例 1 
 Copy
-2
+10
 出力例 1 
 Copy
-2
+Yes
 ",
 "\
 入力例 2 
+Copy
+-9876543210
+出力例 2 
+Copy
+No
 ",
 "\
 入力例 3 
+Copy
+483597848400000
+出力例 3 
+Copy
+No
 ",
 "\
 入力例 4 
@@ -136,7 +146,11 @@ Copy
 
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
-    let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    let n:i64 = scan.token();
+    if -1<<31<=n && n<1<<31 {
+        writeln!(out, "{}", "Yes").ok();
+    } else {
+        writeln!(out, "{}", "No").ok();
+    }
 }
 

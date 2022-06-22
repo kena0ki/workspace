@@ -2,7 +2,15 @@ bin = [
   #{name="edpc_e", path="src/edpc/e.rs"},
   #{name="edpc_s", path="src/edpc/s.rs"},
   #{name="abc158e", path="src/abc158/e.rs"},
-  {name="abc208d", path="src/abc208/d.rs"},
+  #{name="abc208d", path="src/abc208/d.rs"},
+  {name="a", path="src/contest/a.rs"},
+  {name="b", path="src/contest/b.rs"},
+  {name="c", path="src/contest/c.rs"},
+  {name="d", path="src/contest/d.rs"},
+  {name="e", path="src/contest/e.rs"},
+  {name="f", path="src/contest/f.rs"},
+  {name="g", path="src/contest/g.rs"},
+  {name="h", path="src/contest/h.rs"},
 ]
 
 [package]
