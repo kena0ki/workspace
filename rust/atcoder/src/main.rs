@@ -54,6 +54,14 @@ impl<R: ::std::io::BufRead> Scanner<R> {
             self.buffer = input.split_whitespace().rev().map(String::from).collect();
         }
     }
+    pub fn line<T: ::std::str::FromStr>(&mut self) -> Vec<T> {
+        if !self.buffer.is_empty() {
+            panic!("Consume token buffer before read a line.");
+        }
+        let mut input = String::new();
+        self.reader.read_line(&mut input).expect("Failed read");
+        input.split_whitespace().map(|v| v.parse().ok().expect("Failed parse")).collect()
+    }
 }
 
 #[cfg(test)]
