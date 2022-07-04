@@ -7,7 +7,7 @@ fn main() {
     let scan = &mut Scanner::new(sin.lock());
     let sout = std::io::stdout();
     let out = &mut BufWriter::new(sout.lock());
-    solve(scan, out);
+    solve_wrapper(scan, out);
 }
 
 #[allow(unused)]
@@ -54,6 +54,14 @@ impl<R: ::std::io::BufRead> Scanner<R> {
             self.buffer = input.split_whitespace().rev().map(String::from).collect();
         }
     }
+    pub fn line<T: ::std::str::FromStr>(&mut self) -> Vec<T> {
+        if !self.buffer.is_empty() {
+            panic!("Consume token buffer before read a line.");
+        }
+        let mut input = String::new();
+        self.reader.read_line(&mut input).expect("Failed read");
+        input.split_whitespace().map(|v| v.parse().ok().expect("Failed parse")).collect()
+    }
 }
 
 #[cfg(test)]
@@ -81,7 +89,7 @@ mod abc999x {
                 }
                 let output = &mut Vec::new();
                 let scan = &mut Scanner::new(inp.as_bytes());
-                solve(scan, output);
+                solve_wrapper(scan, output);
                 assert_eq!(exp, std::str::from_utf8(output).unwrap());
             }
         };
@@ -100,13 +108,13 @@ test3,
 // Example 0
 "\
 inputCopy
-1
-outputCopy
-1
 ",
 // Example 1
 "\
-input
+inputCopy
+1
+outputCopy
+1
 ",
 // Example 2
 "\
@@ -120,6 +128,13 @@ input
 
 }
 
+fn solve_wrapper(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
+    //let t = 1;
+    let t = scan.token::<usize>();
+    for _ in 0..t {
+        solve(scan,out);
+    }
+}
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
