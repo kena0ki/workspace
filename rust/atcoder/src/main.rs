@@ -62,6 +62,9 @@ impl<R: ::std::io::BufRead> Scanner<R> {
         self.reader.read_line(&mut input).expect("Failed read");
         input.split_whitespace().map(|v| v.parse().ok().expect("Failed parse")).collect()
     }
+    pub fn line_with<T: ::std::str::FromStr,F: FnMut(&T)->T>(&mut self, f: F) -> Vec<T> {
+        return self.line().iter().map(f).collect::<Vec<_>>();
+    }
 }
 
 #[cfg(test)]
