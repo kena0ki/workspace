@@ -4,6 +4,9 @@ bin = [
   {name="c", path="src/contest/c.rs"},
   {name="d", path="src/contest/d.rs"},
   {name="e", path="src/contest/e.rs"},
+  {name="f", path="src/contest/f.rs"},
+  {name="g", path="src/contest/g.rs"},
+  {name="h", path="src/contest/h.rs"},
 ]
 
 [package]
@@ -15,4 +18,3 @@ edition = "2021"
 
 [dependencies]
 rustrithm = { git = "https://github.com/kena0ki/rustrithm" }
-

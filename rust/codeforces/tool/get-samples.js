@@ -5,7 +5,7 @@ const contestId=process.argv[2] || 1710;
 const sampleDir=process.argv[3] || `samples`;
 
 (async () => {
-  fs.rmSync(sampleDir,{recursive:true,force:true});
+  //fs.rmSync(sampleDir,{recursive:true,force:true});
   console.log("logging in to the website");
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
