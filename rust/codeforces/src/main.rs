@@ -97,7 +97,7 @@ mod abc999x {
                 let fn_name = stringify!($name);
                 let test_no = fn_name.as_bytes().last().copied().unwrap() as char;
                 let bname = env!("CARGO_BIN_NAME");
-                let fname = format!("src/contest/{}/input{}.txt",bname,test_no);
+                let fname = format!("src/contest/{}/in{}",bname,test_no);
                 let f = std::fs::File::open(fname);
                 if f.is_err() {
                     panic!("No input file");
@@ -105,7 +105,7 @@ mod abc999x {
                 let mut f = f.unwrap();
                 let mut inp = Vec::new();
                 f.read_to_end(&mut inp).unwrap();
-                let fname = format!("src/contest/{}/output{}.txt",bname,test_no);
+                let fname = format!("src/contest/{}/out{}",bname,test_no);
                 let mut f = std::fs::File::open(fname).unwrap();
                 let mut exp = Vec::new();
                 f.read_to_end(&mut exp).unwrap();
@@ -125,8 +125,6 @@ mod abc999x {
 
     test_macro!(
 test1,
-test2,
-test3,
 );
 
 }

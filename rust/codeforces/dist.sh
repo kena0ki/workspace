@@ -1,8 +1,5 @@
 #!/bin/zsh
 
-if [ "$1"!="n" ]; then
-  rm -r ./src/contest/*
-fi
 cp ./src/main.rs ./src/contest/a.rs
 cp ./src/main.rs ./src/contest/b.rs
 cp ./src/main.rs ./src/contest/c.rs

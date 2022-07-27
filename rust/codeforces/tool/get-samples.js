@@ -5,7 +5,6 @@ const contestId=process.argv[2] || 1710;
 const sampleDir=process.argv[3] || `samples`;
 
 (async () => {
-  //fs.rmSync(sampleDir,{recursive:true,force:true});
   console.log("logging in to the website");
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -31,13 +30,13 @@ const sampleDir=process.argv[3] || `samples`;
     });
     const l = link.split('/');
     const problemId = l[l.length-1].toLowerCase();
+    fs.rmSync(`${sampleDir}/${problemId}`,{recursive:true,force:true});
     fs.mkdirSync(`${sampleDir}/${problemId}`,{recursive:true});
     for (let i=0; i<inputs.length; i++) {
-      fs.writeFileSync(`${sampleDir}/${problemId}/input${i+1}.txt`, inputs[i]);
-      fs.writeFileSync(`${sampleDir}/${problemId}/output${i+1}.txt`, outputs[i]);
+      fs.writeFileSync(`${sampleDir}/${problemId}/in${i+1}`, inputs[i]);
+      fs.writeFileSync(`${sampleDir}/${problemId}/out${i+1}`, outputs[i]);
     }
-    console.log(inputs);
-    console.log(outputs);
+    console.log(`Done`);
   }
 
   await browser.close();
