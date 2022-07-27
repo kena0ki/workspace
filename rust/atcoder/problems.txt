@@ -3,6 +3,9 @@
 https://atcoder.jp/contests/abc149/tasks/abc149_e
 https://atcoder.jp/contests/abc155/tasks/abc155_d
 
+- Ternary search
+https://atcoder.jp/contests/typical90/tasks/typical90_ba
+
 - LCS
 https://atcoder.jp/contests/abc130/tasks/abc130_e
 https://atcoder.jp/contests/abc185/tasks/abc185_e
@@ -10,6 +13,11 @@ https://atcoder.jp/contests/abc185/tasks/abc185_e
 - Tree
 https://atcoder.jp/contests/abc163/tasks/abc163_f
 https://atcoder.jp/contests/abc133/tasks/abc133_f
+
+- LCA
+https://atcoder.jp/contests/typical90/tasks/typical90_ai
+https://codeforces.com/contest/1706/problem/E
+https://codeforces.com/problemset/problem/1702/G1
 
 - Flow
 https://atcoder.jp/contests/abc231/tasks/abc231_h
@@ -35,6 +43,8 @@ https://atcoder.jp/contests/typical90/tasks/typical90_bu
 https://atcoder.jp/contests/abc207/tasks/abc207_f
 https://atcoder.jp/contests/abc133/tasks/abc133_e
 https://atcoder.jp/contests/tdpc/tasks/tdpc_eel
+https://codeforces.com/contest/1689/problem/C
+https://codeforces.com/contest/1694/problem/D
 
 - Rerooting DP
 https://atcoder.jp/contests/abc223/tasks/abc223_g
@@ -47,4 +57,47 @@ https://atcoder.jp/contests/abc196/tasks/abc196_f
 
 - Gaussian elimination
 https://atcoder.jp/contests/abc236/tasks/abc236_f
+
+- Doubling
+https://atcoder.jp/contests/abc241/tasks/abc241_e
+https://atcoder.jp/contests/abc179/tasks/abc179_e
+https://atcoder.jp/contests/abc175/tasks/abc175_d
+https://atcoder.jp/contests/abc258/tasks/abc258_e
+
+- Mo's Algorithm
+https://atcoder.jp/contests/abc242/tasks/abc242_g
+https://atcoder.jp/contests/abc174/tasks/abc174_f
+
+- Manhattan distance
+https://atcoder.jp/contests/typical90/tasks/typical90_br
+https://atcoder.jp/contests/typical90/tasks/typical90_aj
+https://codeforces.com/contest/1689/problem/D
+https://atcoder.jp/contests/abc221/tasks/abc221_g
+https://atcoder.jp/contests/abc178/tasks/abc178_e
+
+- DP optimization using cumulative sum
+https://atcoder.jp/contests/abc249/tasks/abc249_e
+https://atcoder.jp/contests/abc132/tasks/abc132_f
+
+- 2D cumulative sum
+https://atcoder.jp/contests/typical90/tasks/typical90_cc
+
+- Median
+https://atcoder.jp/contests/abc236/tasks/abc236_e
+https://atcoder.jp/contests/abc107/tasks/arc101_b
+
+- Scheduling
+https://atcoder.jp/contests/abc225/tasks/abc225_e
+https://atcoder.jp/contests/typical90/tasks/typical90_k
+
+- Geometory
+https://atcoder.jp/contests/abc259/tasks/abc259_d
+https://atcoder.jp/contests/abc202/tasks/abc202_f
+https://atcoder.jp/contests/abc181/tasks/abc181_f
+https://atcoder.jp/contests/abc157/tasks/abc157_f
+https://atcoder.jp/contests/abc139/tasks/abc139_f
+
+- Two pointer
+https://atcoder.jp/contests/abc229/tasks/abc229_d
+https://atcoder.jp/contests/abc246/tasks/abc246_d
 

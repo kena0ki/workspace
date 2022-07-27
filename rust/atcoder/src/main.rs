@@ -7,7 +7,7 @@ fn main() {
     let scan = &mut Scanner::new(sin.lock());
     let sout = std::io::stdout();
     let out = &mut BufWriter::new(sout.lock());
-    solve(scan, out);
+    solve_wrapper(scan, out, solve);
 }
 
 #[allow(unused)]
@@ -34,6 +34,24 @@ impl <K:Ord,V:Default> MapX<K,V> for BTreeMap<K,V> {
 }
 impl <K:Hash+Eq,V:Default> MapX<K,V> for HashMap<K,V> {
     update_with!();
+}
+
+trait UsizeX {
+    fn i64(self) -> i64;
+}
+impl UsizeX for usize {
+    fn i64(self) -> i64 {
+        self as i64
+    }
+}
+
+trait I64X {
+    fn usize(self) -> usize;
+}
+impl I64X for usize {
+    fn usize(self) -> usize {
+        self as usize
+    }
 }
 
 pub struct Scanner<R> {
@@ -70,84 +88,64 @@ impl<R: ::std::io::BufRead> Scanner<R> {
 #[cfg(test)]
 mod abc999x {
     use super::*;
+    use std::io::Read;
 
     macro_rules! test_macro {
-        ($name:ident, | $input:expr,) => {
+        ($name:ident,) => {
             #[test]
             fn $name() {
-                let vi = $input.split("\n").collect::<Vec<_>>();
-                let vi = &vi[1..vi.len()-1];
-                let mut inp = String::new();
-                let mut cnt=0;
-                for &line in vi {
-                    if line.starts_with("出力例") { break; }
-                    cnt+=1;
-                    if line.starts_with("入力例") || line.starts_with("Copy") { continue; }
-                    inp+=line; inp+="\n";
+                let fn_name = stringify!($name);
+                let test_no = fn_name.as_bytes().last().copied().unwrap() as char;
+                let bname = env!("CARGO_BIN_NAME");
+                let fname = format!("src/contest/{}/in{}",bname,test_no);
+                let f = std::fs::File::open(fname);
+                if f.is_err() {
+                    panic!("No input file");
                 }
-                let mut exp = String::new();
-                for &line in &vi[cnt..] {
-                    if line.starts_with("出力例") || line.starts_with("Copy") { continue; }
-                    exp+=line; exp+="\n";
-                }
-                let output = &mut Vec::new();
-                let scan = &mut Scanner::new(inp.as_bytes());
-                solve(scan, output);
-                assert_eq!(exp, std::str::from_utf8(output).unwrap());
+                let mut f = f.unwrap();
+                let mut inp = Vec::new();
+                f.read_to_end(&mut inp).unwrap();
+                let fname = format!("src/contest/{}/out{}",bname,test_no);
+                let mut f = std::fs::File::open(fname).unwrap();
+                let mut exp = Vec::new();
+                f.read_to_end(&mut exp).unwrap();
+                let exp = String::from_utf8_lossy(&exp);
+                let out = &mut Vec::new();
+                let scan = &mut Scanner::new(&*inp);
+                solve_wrapper(scan, out, solve);
+                let out = String::from_utf8_lossy(&out);
+                assert_eq!(exp, out);
             }
         };
-        ($name:ident, $($n:ident),*, | $input:expr, $($i:expr),*,) => {
-            test_macro!($name, | $input,);
-            test_macro!($($n),*, | $($i),*,);
+        ($name:ident, $($n:ident),*,) => {
+            test_macro!($name,);
+            test_macro!($($n),*,);
         };
     }
 
     test_macro!(
-est0,
 test1,
 test2,
 test3,
-est4,
-est5,
-est6,
-est7,
-|
-"\
-入力例 0 
-",
-"\
-入力例 1 
-Copy
-2
-出力例 1 
-Copy
-2
-",
-"\
-入力例 2 
-",
-"\
-入力例 3 
-",
-"\
-入力例 4 
-",
-"\
-入力例 5 
-",
-"\
-入力例 6 
-",
-"\
-入力例 7 
-",
 );
 
 }
 
+fn solve_wrapper<B,W,F>(scan: &mut Scanner<B>, out: &mut W, mut solve: F)
+    where B: BufRead, W: Write, F:FnMut(&mut Scanner<B>, &mut W)
+    {
+    let t = 1;
+    //let t = scan.token::<usize>();
+    for _ in 0..t {
+        solve(scan,out);
+    }
+}
 
 fn solve(scan: &mut Scanner<impl BufRead>, out: &mut impl Write) {
     let n = scan.token::<usize>();
-    writeln!(out, "{}", n).ok();
+    writeln!(out, "{}", n/0).ok();
 }
+
+
+
 
