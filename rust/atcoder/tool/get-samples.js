@@ -9,15 +9,13 @@ const sampleDir=process.argv[3] || `samples`;
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   await page.goto('https://atcoder.jp/login');
-  console.log(process.env.AC_USER);
-  console.log(process.env.AC_PASSWORD);
   await page.type('#username', process.env.AC_USER);
   await page.type('#password', process.env.AC_PASSWORD);
   await page.click('#submit');
   //await page.waitForNavigation();
   console.log("logged in");
   console.log(process.argv);
-  await page.goto(`https://atcoder.jp/contests/abc${contestId}/tasks`);
+  await page.goto(`https://atcoder.jp/contests/${contestId}/tasks`);
   const links = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('tr td:first-child a')).map(v=>v.href);
   });
