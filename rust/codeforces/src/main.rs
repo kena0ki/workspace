@@ -38,20 +38,17 @@ impl <K:Hash+Eq,V:Default> MapX<K,V> for HashMap<K,V> {
 
 trait UsizeX {
     fn i64(self) -> i64;
+    fn ssb(self,rhs:usize) -> usize;
 }
 impl UsizeX for usize {
-    fn i64(self) -> i64 {
-        self as i64
-    }
+    fn i64(self) -> i64 { self as i64 }
+    fn ssb(self,rhs:usize) -> usize { self.saturating_sub(rhs) }
 }
 
 trait I64X {
-    fn usize(self) -> usize;
-}
-impl I64X for usize {
-    fn usize(self) -> usize {
-        self as usize
-    }
+    fn usize(self) -> usize; }
+impl I64X for i64 {
+    fn usize(self) -> usize { self as usize }
 }
 
 pub struct Scanner<R> {
@@ -106,9 +103,11 @@ mod abc999x {
                 let mut inp = Vec::new();
                 f.read_to_end(&mut inp).unwrap();
                 let fname = format!("src/contest/{}/out{}",bname,test_no);
-                let mut f = std::fs::File::open(fname).unwrap();
+                let f = std::fs::File::open(fname);
                 let mut exp = Vec::new();
-                f.read_to_end(&mut exp).unwrap();
+                if let Ok(mut f) = f {
+                    f.read_to_end(&mut exp).unwrap();
+                }
                 let exp = String::from_utf8_lossy(&exp);
                 let out = &mut Vec::new();
                 let scan = &mut Scanner::new(&*inp);
