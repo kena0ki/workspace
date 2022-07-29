@@ -36,8 +36,8 @@ const sampleDir=process.argv[3] || `samples`;
       fs.writeFileSync(`${sampleDir}/${problemId}/in${i+1}`, inputs[i]);
       fs.writeFileSync(`${sampleDir}/${problemId}/out${i+1}`, outputs[i]);
     }
-    console.log(`Done`);
   }
+  console.log(`Done`);
 
   await browser.close();
 })();
